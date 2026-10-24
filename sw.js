@@ -1,7 +1,7 @@
 // Neon Comet service worker: caches the whole game so it runs fully offline.
 // Saves live in localStorage and are never touched by updates.
 // Release: bump VERSION, commit, push.
-const VERSION = 'neon-comet-v3';
+const VERSION = 'neon-comet-v4';
 const ASSETS = [
   './',
   './manifest.webmanifest',

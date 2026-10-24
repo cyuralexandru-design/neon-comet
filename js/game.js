@@ -30,8 +30,11 @@
     cv.width = Math.round(cssW * DPR); cv.height = Math.round(cssH * DPR);
     G.scale = Math.sqrt(cssW * cssH / NC.ARENA_AREA);
     G.W = cssW / G.scale; G.H = cssH / G.scale;
-    G.top = 64 / G.scale; // HUD band (world units)
-    G.bossTop = 150 / G.scale; // below HUD + boss bar
+    let pr = document.getElementById('satProbe');
+    if (!pr) { pr = document.createElement('div'); pr.id = 'satProbe'; pr.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px)'; document.body.appendChild(pr); }
+    const sat = parseFloat(getComputedStyle(pr).paddingTop) || 0;
+    G.top = (64 + sat) / G.scale; // HUD band (world units)
+    G.bossTop = (150 + sat) / G.scale; // below HUD + boss bar
     makeBg();
     if (G.run && G.run.p) { G.run.p.x = clamp(G.run.p.x, 20, G.W - 20); G.run.p.y = clamp(G.run.p.y, 20, G.H - 20); }
     NC.Input.resetJoy && NC.Input.resetJoy();
