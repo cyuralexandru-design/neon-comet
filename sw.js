@@ -1,9 +1,15 @@
-// Neon Comet service worker: caches the whole game on first visit so it runs fully offline.
-// To ship an update: change VERSION, commit, push. Players get the new version on their next launch.
-const VERSION = 'neon-comet-v2';
+// Neon Comet service worker: caches the whole game so it runs fully offline.
+// Saves live in localStorage and are never touched by updates.
+// Release: bump VERSION, commit, push.
+const VERSION = 'neon-comet-v3';
 const ASSETS = [
   './',
   './manifest.webmanifest',
+  './css/style.css',
+  './js/data.js',
+  './js/core.js',
+  './js/game.js',
+  './js/ui.js',
   './fonts/fonts.css',
   './fonts/ChakraPetch-500-latin.woff2',
   './fonts/ChakraPetch-500-latin-ext.woff2',
@@ -32,27 +38,28 @@ self.addEventListener('activate', e => {
   );
 });
 
+function fromNetwork(req, key) {
+  return fetch(req).then(res => {
+    if (res.ok && !res.redirected) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(key || req, copy)); }
+    return res;
+  });
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  const path = new URL(req.url).pathname;
 
-  // Page: network first (gets updates when online), cache as fallback (offline).
-  // Cached under './' because Cloudflare Pages redirects /index.html to /,
-  // and a redirected response cannot be served for a navigation.
+  // Page: network first, cached under './' (Cloudflare Pages redirects /index.html to /).
   if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req)
-        .then(res => { const copy = res.clone(); if (res.ok && !res.redirected) caches.open(VERSION).then(c => c.put('./', copy)); return res; })
-        .catch(() => caches.match('./'))
-    );
+    e.respondWith(fromNetwork(req, './').catch(() => caches.match('./')));
     return;
   }
-
-  // Everything else: cache first.
-  e.respondWith(
-    caches.match(req).then(hit => hit || fetch(req).then(res => {
-      if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
-      return res;
-    }))
-  );
+  // Code: network first so updates land immediately when online, cache when offline.
+  if (/\.(js|css|webmanifest)$/.test(path)) {
+    e.respondWith(fromNetwork(req).catch(() => caches.match(req)));
+    return;
+  }
+  // Fonts and images: cache first.
+  e.respondWith(caches.match(req).then(hit => hit || fromNetwork(req)));
 });
