@@ -1,9 +1,8 @@
 // Neon Comet service worker: caches the whole game on first visit so it runs fully offline.
 // To ship an update: change VERSION, commit, push. Players get the new version on their next launch.
-const VERSION = 'neon-comet-v1';
+const VERSION = 'neon-comet-v2';
 const ASSETS = [
   './',
-  './index.html',
   './manifest.webmanifest',
   './fonts/fonts.css',
   './fonts/ChakraPetch-500-latin.woff2',
@@ -38,11 +37,13 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
 
   // Page: network first (gets updates when online), cache as fallback (offline).
+  // Cached under './' because Cloudflare Pages redirects /index.html to /,
+  // and a redirected response cannot be served for a navigation.
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req)
-        .then(res => { const copy = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)); return res; })
-        .catch(() => caches.match('./index.html'))
+        .then(res => { const copy = res.clone(); if (res.ok && !res.redirected) caches.open(VERSION).then(c => c.put('./', copy)); return res; })
+        .catch(() => caches.match('./'))
     );
     return;
   }
