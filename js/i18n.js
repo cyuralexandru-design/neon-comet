@@ -1,6 +1,6 @@
 'use strict';
-// Neon Comet 3.0 - i18n (UI agent). NC.lang, NC.t(key, vars), NC.I18N = {ro, en}.
-// RO text has NO diacritics (owner request). Missing key -> returns the key itself.
+// Neon Comet 3.1 - i18n (agent i18n). NC.lang, NC.t(key, vars), NC.setLang, NC.onLang, NC.tLive, NC.tEl, NC.I18N = {ro, en}.
+// RO text has NO diacritics (owner request). Extension keys: js/lang/<agent>.js. Checker: dev/integration/i18n_check.js.
 (function (NC) {
   const ro = {
     // ---------- common ----------
@@ -16,7 +16,7 @@
     // ---------- home ----------
     'menu.start': 'Start', 'menu.hangar': 'Hangar', 'menu.missions': 'Misiuni', 'menu.achievements': 'Realizari',
     'menu.settings': 'Setari', 'menu.account': 'Cont', 'menu.exit': 'Iesire', 'menu.pilot': 'Pilot',
-    'menu.tagline': 'Shooter spatial pixel', 'menu.best': 'Record', 'menu.version': 'v3.0',
+    'menu.tagline': 'Shooter spatial pixel', 'menu.best': 'Record', 'menu.version': 'v3.1',
     'menu.pilotLvl': 'Pilot Nv {n}',
     // ---------- hangar ----------
     'hangar.title': 'Hangar',
@@ -157,7 +157,7 @@
     'settings.reset': 'Sterge progresul', 'settings.resetConfirm': 'Sigur? Tot progresul va fi sters definitiv.',
     'settings.resetConfirm2': 'Ultima confirmare: stergi tot?', 'settings.iosVibe': 'Pe iPhone browserul nu permite vibratii.',
     'settings.tutorial': 'Tutorial', 'settings.tutorialReplay': 'Reia tutorialul', 'settings.credits': 'Credite',
-    'settings.creditsText': 'Fonturi: Silkscreen (Jason Kottke), Micro 5 (Sarah Cadigan-Fried), licenta OFL.',
+    'settings.creditsText': 'Fonturi: Oxanium (Severin Meyer), Silkscreen (Jason Kottke), licenta OFL.',
     // ---------- account ----------
     'account.title': 'Cont', 'account.code': 'Cod de salvare', 'account.codeHint': 'Copiaza codul ca sa-ti muti progresul pe alt dispozitiv.',
     'account.copy': 'Copiaza', 'account.copied': 'Cod copiat', 'account.paste': 'Lipeste codul aici',
@@ -200,9 +200,9 @@
     // ---------- tutorial ----------
     'tut.title': 'Tutorial', 'tut.move': 'Misca nava cu WASD sau sagetile',
     'tut.moveTouch': 'Pune degetul in stanga si trage ca sa zbori', 'tut.movePad': 'Foloseste stick-ul stang ca sa zbori',
-    'tut.dash': 'Apasa SPATIU pentru dash', 'tut.dashTouch': 'Apasa DASH ca sa te feresti', 'tut.dashPad': 'Apasa X (Cross) pentru dash',
+    'tut.dash': 'Apasa SPATIU pentru dash', 'tut.dashTouch': 'Apasa DASH ca sa te feresti', 'tut.dashPad': 'Apasa R2 pentru dash',
     'tut.cons': 'Apasa 1, 2, 3 pentru consumabile', 'tut.consTouch': 'Butoanele din jurul DASH sunt consumabilele',
-    'tut.consPad': 'Patrat, Triunghi si L1 folosesc consumabilele',
+    'tut.consPad': 'X (Cross), Patrat si Triunghi folosesc consumabilele',
     'tut.card': 'La fiecare nivel alegi o carte', 'tut.fire': 'Nava trage singura. Distruge inamicii si aduna stele!',
     'tut.skip': 'Sari peste', 'tut.next': 'Am inteles', 'tut.done': 'Gata! Mult noroc, pilot!', 'tut.step': 'Pas {a}/{b}',
     // ---------- misc ----------
@@ -225,7 +225,7 @@
     'common.reward': 'Reward', 'common.progress': '{a} / {b}', 'common.loading': 'Loading',
     'menu.start': 'Start', 'menu.hangar': 'Hangar', 'menu.missions': 'Missions', 'menu.achievements': 'Achievements',
     'menu.settings': 'Settings', 'menu.account': 'Account', 'menu.exit': 'Exit', 'menu.pilot': 'Pilot',
-    'menu.tagline': 'Pixel space shooter', 'menu.best': 'Best', 'menu.version': 'v3.0', 'menu.pilotLvl': 'Pilot Lv {n}',
+    'menu.tagline': 'Pixel space shooter', 'menu.best': 'Best', 'menu.version': 'v3.1', 'menu.pilotLvl': 'Pilot Lv {n}',
     'hangar.title': 'Hangar',
     'tab.ships': 'Ships', 'tab.weapons': 'Weapons', 'tab.turrets': 'Turrets', 'tab.companions': 'Companions',
     'tab.gear': 'Gear', 'tab.consumables': 'Consumables', 'tab.chests': 'Chests',
@@ -350,7 +350,7 @@
     'settings.reset': 'Reset progress', 'settings.resetConfirm': 'Sure? All progress will be deleted forever.',
     'settings.resetConfirm2': 'Last check: delete everything?', 'settings.iosVibe': 'iPhone browsers do not allow vibration.',
     'settings.tutorial': 'Tutorial', 'settings.tutorialReplay': 'Replay tutorial', 'settings.credits': 'Credits',
-    'settings.creditsText': 'Fonts: Silkscreen (Jason Kottke), Micro 5 (Sarah Cadigan-Fried), OFL license.',
+    'settings.creditsText': 'Fonts: Oxanium (Severin Meyer), Silkscreen (Jason Kottke), OFL license.',
     'account.title': 'Account', 'account.code': 'Save code', 'account.codeHint': 'Copy the code to move your progress to another device.',
     'account.copy': 'Copy', 'account.copied': 'Code copied', 'account.paste': 'Paste code here',
     'account.load': 'Load code', 'account.importOk': 'Progress loaded!', 'account.importBad': 'Invalid code',
@@ -387,9 +387,9 @@
     'toast.full': 'Already at max', 'toast.loadoutFull': 'Max 3 types', 'toast.locked': 'Locked',
     'tut.title': 'Tutorial', 'tut.move': 'Move the ship with WASD or the arrow keys',
     'tut.moveTouch': 'Put a finger on the left side and drag to fly', 'tut.movePad': 'Use the left stick to fly',
-    'tut.dash': 'Press SPACE to dash', 'tut.dashTouch': 'Tap DASH to dodge', 'tut.dashPad': 'Press Cross (X) to dash',
+    'tut.dash': 'Press SPACE to dash', 'tut.dashTouch': 'Tap DASH to dodge', 'tut.dashPad': 'Press R2 to dash',
     'tut.cons': 'Press 1, 2, 3 for consumables', 'tut.consTouch': 'The buttons around DASH are your consumables',
-    'tut.consPad': 'Square, Triangle and L1 use consumables',
+    'tut.consPad': 'Cross, Square and Triangle use consumables',
     'tut.card': 'Every level you pick a card', 'tut.fire': 'Your ship fires by itself. Destroy enemies and grab stars!',
     'tut.skip': 'Skip', 'tut.next': 'Got it', 'tut.done': 'Done! Good luck, pilot!', 'tut.step': 'Step {a}/{b}',
     'rotate.title': 'Rotate your phone', 'rotate.sub': 'Neon Comet is played in landscape',
@@ -705,31 +705,127 @@
     "banner.sector": "Sector",
   });
 
+  // extension files js/lang/<agent>.js (loaded after this file) Object.assign into NC.I18N.ro/en; a file loaded
+  // earlier still wins over the base strings here.
   NC.I18N = NC.I18N || {};
   NC.I18N.ro = Object.assign({}, ro, NC.I18N.ro || {});
   NC.I18N.en = Object.assign({}, en, NC.I18N.en || {});
 
-  const guess = () => { try { return (navigator.language || 'ro').toLowerCase().startsWith('ro') ? 'ro' : 'en'; } catch (e) { return 'ro'; } };
-  NC.lang = NC.lang || guess();
+  // =====================================================================================================
+  // Language state (3.1). Single source of truth = the saved setting NC.save.settings.lang (once chosen).
+  // - NC.lang is correct from the FIRST t() call: read synchronously from the save in localStorage
+  //   (neonComet.v4 / .bak), then 'nc.lang', then the browser languages. (3.0 used only navigator.language
+  //   until UI.boot ran setLang -> anything translated earlier was in the wrong language.)
+  // - NC.t() re-checks the live setting; if something changed it without NC.setLang, t() adopts it at once and
+  //   fires the onLang listeners on the next tick (UI re-renders) -> HUD/pause can never disagree with Settings.
+  // - Missing key: lang=en -> humanized key (NEVER Romanian text); lang=ro -> EN text -> humanized key.
+  // =====================================================================================================
+  NC.LANGS = ['ro', 'en'];
+  const norm = l => { const s = String(l == null ? '' : l).trim().toLowerCase().slice(0, 2); return s === 'ro' || s === 'en' ? s : null; };
+  const LS_KEY = 'nc.lang';
+  const lsGet = k => { try { return typeof localStorage !== 'undefined' ? localStorage.getItem(k) : null; } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { if (typeof localStorage !== 'undefined') localStorage.setItem(k, v); } catch (e) {} };
+  function storedLang() {
+    for (const k of ['neonComet.v4', 'neonComet.v4.bak']) {
+      try { const o = JSON.parse(lsGet(k) || 'null'); const l = o && o.settings && norm(o.settings.lang); if (l) return l; } catch (e) {}
+    }
+    return norm(lsGet(LS_KEY));
+  }
+  function guess() {
+    try { const all = [].concat(navigator.languages || [], navigator.language || []); return all.some(x => norm(x) === 'ro') ? 'ro' : all.length ? 'en' : 'ro'; } catch (e) { return 'ro'; }
+  }
+  let cur = norm(NC.lang) || storedLang() || guess();
+  try { document.documentElement.lang = cur; } catch (e) {}
+
+  const listeners = [];
+  let firing = false, again = false, pending = 0;
+  function apply(l) {
+    cur = l;
+    try { document.documentElement.lang = l; } catch (e) {}
+    lsSet(LS_KEY, l);
+    // keep the saved setting in sync when it was already chosen (null = first-launch picker still pending)
+    try { const S = NC.save; if (S && S.settings && S.settings.lang && S.settings.lang !== l) S.settings.lang = l; } catch (e) {}
+  }
+  function fire() {
+    if (pending) { clearTimeout(pending); pending = 0; }
+    if (firing) { again = true; return; }
+    let n = 0;
+    do {
+      again = false; firing = true;
+      try { listeners.slice().forEach(fn => { try { fn(cur); } catch (e) { console.error(e); } }); } finally { firing = false; }
+    } while (again && ++n < 3);
+  }
+  const schedule = () => { if (!pending) pending = setTimeout(() => { pending = 0; fire(); }, 0); };
+  // live check against the saved setting (cheap fast path: same string -> no work)
+  function lang() {
+    let v = null; try { const S = NC.save; v = S && S.settings ? S.settings.lang : null; } catch (e) {}
+    if (v && v !== cur && !firing) { const n = norm(v); if (n && n !== cur) { apply(n); schedule(); } }
+    return cur;
+  }
+
+  NC.onLang = fn => { if (typeof fn === 'function') listeners.push(fn); return fn; };
+  NC.offLang = fn => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); };
+  // NC.setLang('ro'|'en'|'ro-RO'...) - listeners fire only on a real change (or force)
+  NC.setLang = function (l, force) {
+    l = norm(l); if (!l) return cur;
+    const changed = l !== cur; apply(l);
+    if (changed || force) fire();
+    return cur;
+  };
+  // NC.lang stays readable/writable for old code; writing it goes through setLang (listeners fire)
+  Object.defineProperty(NC, 'lang', { configurable: true, enumerable: true, get: () => lang(), set: v => { NC.setLang(v); } });
+
+  // ------------------------------------------------------------------ lookup
+  const KEYLIKE = /^[A-Za-z][\w-]*(\.[\w-]+)+$/;
+  const GENERIC = /^(name|desc|title|label|text|txt|sub|body|perk|hint|msg)$/;
+  const humanize = key => {
+    const parts = String(key).split('.');
+    while (parts.length > 1 && GENERIC.test(parts[parts.length - 1])) parts.pop();
+    const w = parts[parts.length - 1].replace(/^(evo|sp)_/, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase();
+    return w ? w[0].toUpperCase() + w.slice(1) : String(key);
+  };
+  NC.i18nHumanize = humanize;
+  const missing = NC.i18nMissing = { ro: {}, en: {} };
+  const note = (l, key) => { if (!missing[l][key]) { missing[l][key] = 1; try { console.warn('[i18n] missing ' + l + ': ' + key); } catch (e) {} } };
+  const fill = (s, vars) => (vars ? String(s).replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m)) : s);
 
   NC.t = function (key, vars) {
-    const d = NC.I18N[NC.lang] || NC.I18N.ro;
-    let s = d[key];
-    if (s == null) s = NC.I18N.ro[key];
-    if (s == null) s = NC.I18N.en[key];
-    if (s == null) return key;
-    if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m));
-    return s;
+    if (key == null) return '';
+    key = String(key);
+    const L = lang(), D = NC.I18N;
+    let s = D[L] ? D[L][key] : null;
+    if (s == null) {
+      if (!KEYLIKE.test(key)) return fill(key, vars);     // already a text, not a key
+      note(L, key);
+      if (L !== 'en' && D.en) s = D.en[key];              // RO missing -> EN (better than a raw key)
+      if (s == null) s = humanize(key);                    // EN missing -> humanized key, never Romanian
+    }
+    return fill(s, vars);
   };
-  NC.hasT = key => NC.I18N.ro[key] != null || NC.I18N.en[key] != null;
+  NC.hasT = (key, l) => (l ? !!(NC.I18N[l] && NC.I18N[l][key] != null) : (NC.I18N.ro[key] != null || NC.I18N.en[key] != null));
 
-  // Switch language instantly: listeners (UI re-render) are notified.
-  const listeners = [];
-  NC.onLang = fn => listeners.push(fn);
-  NC.setLang = function (l) {
-    if (l !== 'ro' && l !== 'en') return;
-    NC.lang = l;
-    try { document.documentElement.lang = l; } catch (e) {}
-    listeners.forEach(fn => { try { fn(l); } catch (e) { console.error(e); } });
+  // Live strings. NC.tLive(key, vars) -> object that translates whenever it is turned into a string
+  // (template literal, + concat, textContent =, UI.esc). Use it when a name is stored at spawn/creation time.
+  NC.tLive = (key, vars) => ({ key, vars, toString() { return NC.t(key, vars); }, valueOf() { return NC.t(key, vars); }, toJSON() { return NC.t(key, vars); } });
+  // NC.tEl(el, key, vars) sets the text AND binds it: it is re-translated automatically on every language switch.
+  NC.tEl = (el, key, vars) => {
+    if (!el) return el;
+    el.setAttribute('data-tk', key);
+    if (vars) el.setAttribute('data-tv', JSON.stringify(vars)); else el.removeAttribute('data-tv');
+    el.textContent = NC.t(key, vars);
+    return el;
   };
+  // Re-translate bound elements: [data-tk(+data-tv)], [data-i18n(+data-i18n-vars)], [data-i18n-ph|-title|-aria].
+  NC.i18nApply = (root) => {
+    try {
+      root = root || document; if (!root || !root.querySelectorAll) return;
+      const vars = s => { try { return s ? JSON.parse(s) : undefined; } catch (e) { return undefined; } };
+      root.querySelectorAll('[data-tk]').forEach(el => { el.textContent = NC.t(el.getAttribute('data-tk'), vars(el.getAttribute('data-tv'))); });
+      root.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = NC.t(el.getAttribute('data-i18n'), vars(el.getAttribute('data-i18n-vars'))); });
+      [['ph', 'placeholder'], ['title', 'title'], ['aria', 'aria-label']].forEach(([a, attr]) =>
+        root.querySelectorAll('[data-i18n-' + a + ']').forEach(el => el.setAttribute(attr, NC.t(el.getAttribute('data-i18n-' + a)))));
+    } catch (e) { console.error(e); }
+  };
+  NC.onLang(() => NC.i18nApply());
+  NC.i18nReport = () => ({ lang: cur, missing: { ro: Object.keys(missing.ro), en: Object.keys(missing.en) } });
 })(window.NC = window.NC || {});

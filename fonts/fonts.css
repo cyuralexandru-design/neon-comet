@@ -1,4 +1,14 @@
-/* Neon Comet 3.0 pixel fonts (local, offline). See LICENSES.md */
-@font-face { font-family: 'NCPixel'; src: url('Silkscreen-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: block; }
-@font-face { font-family: 'NCPixel'; src: url('Silkscreen-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: block; }
-@font-face { font-family: 'NCBody'; src: url('Micro5-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: block; }
+/* Neon Comet 3.1 fonts (local, offline). See LICENSES.md
+   NCUI    = Oxanium (all UI text). Stack everywhere: 'NCUI', system-ui, sans-serif (never a serif fallback).
+   NCPixel = Silkscreen (logo-like pixel titles only, class .pix-title).
+   NCBody  = legacy alias (3.0 used Micro 5 for body text) -> now also Oxanium, so old rules stay readable. */
+@font-face { font-family: 'NCUI'; src: url('Oxanium-400.woff2') format('woff2'); font-weight: 100 499; font-style: normal; font-display: swap; }
+@font-face { font-family: 'NCUI'; src: url('Oxanium-600.woff2') format('woff2'); font-weight: 500 649; font-style: normal; font-display: swap; }
+@font-face { font-family: 'NCUI'; src: url('Oxanium-700.woff2') format('woff2'); font-weight: 650 749; font-style: normal; font-display: swap; }
+@font-face { font-family: 'NCUI'; src: url('Oxanium-800.woff2') format('woff2'); font-weight: 750 900; font-style: normal; font-display: swap; }
+
+@font-face { font-family: 'NCBody'; src: url('Oxanium-400.woff2') format('woff2'); font-weight: 100 499; font-style: normal; font-display: swap; }
+@font-face { font-family: 'NCBody'; src: url('Oxanium-700.woff2') format('woff2'); font-weight: 500 900; font-style: normal; font-display: swap; }
+
+@font-face { font-family: 'NCPixel'; src: url('Silkscreen-Regular.woff2') format('woff2'); font-weight: 100 599; font-style: normal; font-display: block; }
+@font-face { font-family: 'NCPixel'; src: url('Silkscreen-Bold.woff2') format('woff2'); font-weight: 600 900; font-style: normal; font-display: block; }

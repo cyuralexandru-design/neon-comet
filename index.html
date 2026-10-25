@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Neon Comet</title>
 <meta name="description" content="Shooter spatial pixel art in browser: piloteaza nava, invinge boss-i, deschide cufere, upgradeaza-ti flota. Merge offline.">
-<meta name="theme-color" content="#0b0f1e">
+<meta name="theme-color" content="#0b0e14">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,10 +23,15 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="preload" href="fonts/Silkscreen-Regular.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/Micro5-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/Oxanium-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/Oxanium-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/hud.css">
+<link rel="stylesheet" href="css/overlays.css">
+<link rel="stylesheet" href="css/hangar.css">
+<link rel="stylesheet" href="css/menus.css">
+<link rel="stylesheet" href="css/help.css">
 </head>
 <body>
 <div id="stage">
@@ -42,10 +47,20 @@
 <div id="rotate"><div class="ph"></div><div class="rt" data-i18n="rotate.title">Roteste telefonul</div><div class="rs" data-i18n="rotate.sub">Neon Comet se joaca pe orizontala</div></div>
 
 <script src="js/i18n.js"></script>
+<script src="js/lang/core.js"></script>
+<script src="js/lang/hud.js"></script>
+<script src="js/lang/overlays.js"></script>
+<script src="js/lang/hangar.js"></script>
+<script src="js/lang/menus.js"></script>
+<script src="js/lang/help.js"></script>
+<script src="js/lang/engine.js"></script>
+<script src="js/lang/data.js"></script>
+<script src="js/lang/input.js"></script>
 <script src="js/data.js"></script>
 <script src="js/save.js"></script>
 <script src="js/systems.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/engine/display.js"></script>
 <script src="js/engine/assets.js"></script>
 <script src="js/engine/input.js"></script>
 <script src="js/engine/fx.js"></script>
@@ -59,6 +74,7 @@
 <script src="js/ui/hangar.js"></script>
 <script src="js/ui/settings.js"></script>
 <script src="js/ui/menus.js"></script>
+<script src="js/ui/help.js"></script>
 <script src="js/ui/app.js"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {

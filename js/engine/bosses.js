@@ -1,6 +1,7 @@
 'use strict';
-// Neon Comet 3.0 engine: bosses (every 50k) and mini-bosses (25k, 75k, ...). Telegraphed attack library from v2:
-// aimed (with lead), gapRing, sweep (beam), mines, ram, spiral, orbs, blink. Bosses face down and live in the top band.
+// Neon Comet 3.1 engine: bosses (every 50k) and mini-bosses (25k, 75k, ...). Telegraphed attack library from v2:
+// aimed (with lead), gapRing, sweep (beam), mines, ram, spiral, orbs, blink. Bosses face down and live in the top band,
+// always fully below the top HUD (NC.game.hudTop + 4). Boss phases switch at exactly 2/3 and 1/3 hp (= the 3 boss-bar segments).
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = () => NC.fx;
@@ -38,15 +39,22 @@
     return d;
   };
 
+  // resting band: whole sprite below the HUD safe line, never deeper than ~45% of the screen
+  B.minY = (b) => Math.min((X.safeTop ? X.safeTop() : 26) + b.size / 2, X.G.H * 0.45);
+  B.restY = (b, span) => B.minY(b) + U.rnd(0, span);
+  B.PHASES = 3;
+  B.phaseOf = (b) => { if (!b.big) return 0; const f = b.hp / b.max; return f > 2 / 3 ? 0 : f > 1 / 3 ? 1 : 2; };
+
   // ------------------------------------------------------------ creation
   B.spawnBoss = (idx) => {
     const R = X.R, G = X.G, def = B.def(idx), hp = B.bossHp(idx);
     const b = R.boss = {
-      kind: 'boss', big: true, def, idx, id: def.id, spr: 'boss_' + def.id, size: 112, r: 34, x: G.W / 2, y: -60, tx: G.W / 2, ty: 58,
+      kind: 'boss', big: true, def, idx, id: def.id, spr: 'boss_' + def.id, size: 112, r: 34, x: G.W / 2, y: -60, tx: G.W / 2, ty: 0,
       hp, max: hp, state: 'enter', phase: 0, step: 0, t: 0, cool: 1.2, atk: null, flash: 0, inv: 0, alpha: 1, untargetable: true,
       nameKey: 'boss.' + def.id + '.name',
     };
-    U.ui('showBossBar', { id: def.id, nameKey: b.nameKey, hp, mini: false, col: def.col });
+    b.ty = B.minY(b) + 2;
+    U.ui('showBossBar', { id: def.id, nameKey: b.nameKey, hp, mini: false, col: def.col, segs: B.PHASES });
     U.sfx('boss_intro'); F().doShake(4);
     return b;
   };
@@ -54,22 +62,23 @@
     const R = X.R, G = X.G, d = B.miniDef(n);
     const hp = d.hp;
     const b = R.mboss = {
-      kind: 'mboss', big: false, def: d, idx: n, id: d.id, spr: 'mboss_' + d.id, size: 48, r: 17, x: U.rnd(60, G.W - 60), y: -30, tx: G.W / 2, ty: 50,
+      kind: 'mboss', big: false, def: d, idx: n, id: d.id, spr: 'mboss_' + d.id, size: 48, r: 17, x: U.rnd(60, G.W - 60), y: -30, tx: G.W / 2, ty: 0,
       hp, max: hp, state: 'enter', phase: 0, step: 0, t: 0, cool: 1, atk: null, flash: 0, inv: 0, alpha: 1, untargetable: true,
       nameKey: 'mboss.' + d.id + '.name',
     };
-    U.ui('banner', 'banner.miniboss', U.t(b.nameKey));
+    b.ty = B.minY(b) + 6;
+    U.ui('alert', 'elite', { nameKey: b.nameKey, mini: true, id: b.id });
     U.sfx('warn');
     return b;
   };
 
   // ------------------------------------------------------------ helpers
-  const tm = (b) => (b.big ? 1 : 0.7) * (1 + 0.1 * Math.min(X.R.sector, 10));
+  const tm = (b) => (b.big ? 1 : 0.7) * (NC.DATA && NC.DATA.bossDmgScale ? (b.def.dmgK || 1) * NC.DATA.bossDmgScale(X.R.sector) : 1 + 0.1 * Math.min(X.R.sector, 10));
   function reposition(b) {
     const G = X.G, p = X.R.p;
     let best = null, bs = -1e9;
     for (let i = 0; i < 8; i++) {
-      const x = U.rnd(b.size * 0.45, G.W - b.size * 0.45), y = b.big ? U.rnd(44, 60) : U.rnd(26, 60);
+      const x = U.rnd(b.size * 0.45, G.W - b.size * 0.45), y = B.restY(b, b.big ? 14 : 30);
       const s = -Math.abs(x - p.x) * 0.3 - Math.abs(x - b.x) * 0.2 + U.rnd(0, 30);
       if (s > bs) { bs = s; best = { x, y }; }
     }
@@ -98,7 +107,7 @@
       case 'ram': { const c = NC.enemies.lead(b.x, b.y, 260); A.tx = U.clamp(c.x, 20, X.G.W - 20); A.ty = U.clamp(c.y, 20, X.G.H - 10); A.tele = 0.9 - ph * 0.1; A.ang = Math.atan2(A.ty - b.y, A.tx - b.x); A.hx = b.x; A.hy = b.y; break; }
       case 'spiral': A.dur = (2.4 + ph * 0.4) * (b.big ? 1 : 0.7); A.arms = (b.big ? 3 : 2) + (ph >= 2 ? 1 : 0); A.rot = U.rnd(0, U.TAU); A.next = 0; A.dir = Math.random() < 0.5 ? -1 : 1; break;
       case 'orbs': A.count = 3 + ph; A.next = 0.3; break;
-      case 'blink': A.nx = U.rnd(b.size * 0.45, X.G.W - b.size * 0.45); A.ny = b.big ? U.rnd(44, 62) : U.rnd(26, 60); A.dur = 0.8; break;
+      case 'blink': A.nx = U.rnd(b.size * 0.45, X.G.W - b.size * 0.45); A.ny = B.restY(b, b.big ? 16 : 30); A.dur = 0.8; break;
     }
   }
 
@@ -107,14 +116,14 @@
     b.t += dt; b.flash = Math.max(0, b.flash - dt); b.inv = Math.max(0, b.inv - dt);
     if (b.burn) { b.burn.t -= dt; b.burnTick = (b.burnTick || 0) - dt; if (b.burnTick <= 0) { b.burnTick = 0.25; X.damage(b, b.burn.dps * 0.25, false, b.x, b.y, { quiet: true }); } if (b.burn && b.burn.t <= 0) b.burn = null; }
     const ease = (k) => { b.x += (b.tx - b.x) * Math.min(1, dt * k); b.y += (b.ty - b.y) * Math.min(1, dt * k); };
-    if (b.state === 'enter') { ease(1.4); if (Math.abs(b.y - b.ty) < 2) { b.state = 'idle'; b.cool = 0.8; b.untargetable = false; } return; }
-    // phase change (bosses only)
-    const nph = b.big ? (b.hp / b.max > 0.66 ? 0 : b.hp / b.max > 0.33 ? 1 : 2) : 0;
+    if (b.state === 'enter') { b.ty = Math.max(b.ty, B.minY(b)); ease(1.4); if (Math.abs(b.y - b.ty) < 2) { b.state = 'idle'; b.cool = 0.8; b.untargetable = false; } return; }
+    // phase change (bosses only): exactly at 2/3 and 1/3 hp (matches the 3-segment boss bar), no banner (SPEC-31 §2.1)
+    const nph = B.phaseOf(b);
     if (nph > b.phase) {
       b.phase = nph; b.step = 0; b.atk = null; b.state = 'idle'; b.cool = 1.4; b.inv = 1.2; b.hidden = false; b.alpha = 1; b.untargetable = false;
       R.ebullets.length = 0; R.beams = R.beams.filter(x => x.owner !== 'boss');
       F().ring(b.x, b.y, b.def.col, 140, 0.8); F().doFlash(b.def.col, 0.3); F().doShake(5); F().hitstop = 0.1;
-      U.ui('banner', 'banner.phase', String(nph + 1)); U.sfx('boss_phase');
+      U.sfx('boss_phase'); NC.Input && NC.Input.buzz && NC.Input.buzz(80, 0.6);
       const d = Math.hypot(p.x - b.x, p.y - b.y) || 1; if (d < 70) { p.vx = (p.x - b.x) / d * 220; p.vy = (p.y - b.y) / d * 220; }
     }
     if (b.state === 'idle') {
@@ -199,7 +208,11 @@
       if (done) { b.state = 'idle'; b.atk = null; b.cool = ([1.3, 1.05, 0.85][b.phase] || 0.85) * (b.big ? 1 : 1.3) + U.rnd(0, 0.3); reposition(b); }
     }
     const h = b.size * 0.3;
-    if (!(b.atk && b.atk.name === 'ram')) { b.x = U.clamp(b.x, h, G.W - h); b.y = U.clamp(b.y, b.big ? 20 : 14, G.H - h); }
+    if (b.ty < B.minY(b)) b.ty = B.minY(b);
+    if (!(b.atk && b.atk.name === 'ram')) {
+      b.x = U.clamp(b.x, h, G.W - h); b.y = Math.min(b.y, G.H - h);
+      const my = B.minY(b); if (b.y < my - 2) b.y += (my - b.y) * Math.min(1, dt * 4); // eased back below the HUD, no snapping
+    }
     // contact damage (hit circle)
     if (!b.hidden && p.alive && U.d2(p.x, p.y, b.x, b.y) < (b.r + p.r) ** 2) {
       X.damagePlayer(28 * mul);

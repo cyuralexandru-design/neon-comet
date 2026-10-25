@@ -1,5 +1,8 @@
-// Neon Comet 3.0 - audio: chiptune SFX + procedural music sequencer (WebAudio, no files).
+// Neon Comet 3.1 - audio: chiptune SFX + procedural music sequencer (WebAudio, no files).
 // API: NC.audio.unlock(), sfx(name, param), music(mode), setVolumes(music, sfx), ready.
+// 3.1 (agent input): self-healing context (resume on EVERY gesture/visibility/statechange, recreate when closed or the
+// clock is stalled), failure-safe sfx + music scheduling, voice limiting, gain watchdog. See NOTES/31-input.md.
+// Extra (diagnostics): NC.audio.state(), NC.audio.musicOn(), NC.audio.sfxOn().
 // Internal/test: NC.audio._renderOffline(mode, seconds), _renderSfxOffline(name, param), SFX_NAMES, MODES.
 window.NC = window.NC || {};
 (function (NC) {
@@ -7,16 +10,35 @@ window.NC = window.NC || {};
   const A = NC.audio = NC.audio || {};
   A.ready = false;
   A.MODES = ['menu', 'nebula', 'asteroid', 'ion', 'station', 'boss', 'off'];
-  let vol = { music: 0.7, sfx: 0.8 };
-  try { const s = NC.save && NC.save.settings; if (s) { if (typeof s.music === 'number') vol.music = s.music; if (typeof s.sfx === 'number') vol.sfx = s.sfx; } } catch (e) {}
+  const OUT_GAIN = 0.9, DEF = { music: 0.55, sfx: 0.8 };       // defaults = save.js defaultSettings
+  let vol = { music: DEF.music, sfx: DEF.sfx }, volSet = false;  // volSet: setVolumes() was called at least once
+  const lastOn = { music: DEF.music, sfx: DEF.sfx };             // last non-zero volume (for boolean "on" toggles)
+  // settings may hold numbers (0..1), percents, numeric strings or booleans (quick toggles) -> 0..1 or null (= keep)
+  function normVol(x, k) {
+    if (x === true) return lastOn[k] > 0 ? lastOn[k] : DEF[k];
+    if (x === false) return 0;
+    if (typeof x === 'string' && x.trim() !== '') x = +x;
+    if (typeof x !== 'number' || !isFinite(x)) return null;
+    if (x > 1) x = x / 100;
+    return Math.max(0, Math.min(1, x));
+  }
+  function settingsObj() {
+    try { return (NC.sys && NC.sys.state && NC.sys.state() && NC.sys.state().settings) || (NC.save && NC.save.settings) || null; } catch (e) { return null; }
+  }
+  function readSettingsVol() { // only used until the UI calls setVolumes (NC.save is not loaded yet when this file runs)
+    const s = settingsObj(); if (!s) return;
+    const m = normVol(s.music, 'music'), f = normVol(s.sfx, 'sfx');
+    if (m != null) vol.music = m; if (f != null) vol.sfx = f;
+  }
+  readSettingsVol();
 
   const midi = n => 440 * Math.pow(2, (n - 69) / 12);
   function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
   // ------------------------------------------------------------------ engine (graph per context)
   function buildEngine(ctx) {
-    const E = { ctx };
-    E.out = ctx.createGain(); E.out.gain.value = 0.9;
+    const E = { ctx, vn: 0, vend: 0 };
+    E.out = ctx.createGain(); E.out.gain.value = OUT_GAIN;
     // soft clipper as final safety: tanh curve, peak 0.97
     const sh = ctx.createWaveShaper(), curve = new Float32Array(2048);
     for (let i = 0; i < 2048; i++) { const x = (i / 1023.5) - 1; curve[i] = 0.97 * Math.tanh(x * 1.15) / Math.tanh(1.15); }
@@ -60,6 +82,7 @@ window.NC = window.NC || {};
     let vib = null;
     if (o.vib) { vib = c.createOscillator(); const vg = c.createGain(); vib.frequency.value = o.vibR || 6; vg.gain.value = f * o.vib; vib.connect(vg).connect(x.frequency); vib.start(s + (o.vibD || 0)); vib.stop(s + d + 0.02); }
     x.connect(g).connect(o.dest || E.sfxBus); x.start(s); x.stop(s + d + 0.02);
+    E.vn += vib ? 2 : 1; if (s + d > E.vend) E.vend = s + d;
   }
   // noise: d duration, v vol, opts {f filter freq, f2 end, type, q, at, metal}
   function Nz(E, t, d, v, o) {
@@ -73,6 +96,7 @@ window.NC = window.NC || {};
     src.connect(fl).connect(g).connect(o.dest || E.sfxBus);
     const off = o.metal ? 0 : (Math.random() * 0.5);
     src.start(s, off); src.stop(s + d + 0.02);
+    E.vn++; if (s + d > E.vend) E.vend = s + d;
   }
   function arp(E, t, notes, step, d, w, v, o) { notes.forEach((n, i) => T(E, t, midi(n), d, w, v, Object.assign({}, o, { at: (o && o.at || 0) + i * step }))); }
 
@@ -192,8 +216,13 @@ window.NC = window.NC || {};
     const g = E.ctx.createGain(); g.gain.value = 0; g.connect(dest || E.musBus);
     return { sg, g, mode, step: 0, next: startT, alive: true, sp: 60 / sg.bpm / 4 };
   }
-  function scheduleTrack(E, tr, until) {
-    while (tr.next < until) { playStep(E, tr, tr.step, tr.next); tr.step++; tr.next += tr.sp; }
+  // a throwing step must never freeze the track (3.0: the exception skipped step++ -> same step threw forever = no music)
+  function scheduleTrack(E, tr, until, maxSteps) {
+    let n = maxSteps || Infinity;
+    while (tr.next < until && n-- > 0) {
+      try { playStep(E, tr, tr.step, tr.next); } catch (e) { noteErr(e); }
+      tr.step++; tr.next += tr.sp;
+    }
   }
   function drum(E, t, ch, v, dest, sp) {
     if (ch === 'k') { T(E, t, 150, 0.16, 'tri', 0.32 * v, { f2: 42, dest, a: 0.002 }); Nz(E, t, 0.02, 0.05 * v, { f: 1200, dest }); }
@@ -248,71 +277,259 @@ window.NC = window.NC || {};
     }
   }
 
-  // ------------------------------------------------------------------ live runtime
-  let E = null, tracks = [], curMode = 'off', timer = null, unlocked = false;
-  const LOOK = 0.16, FADE = 1.2;
+  // ------------------------------------------------------------------ live runtime (3.1: self-healing)
+  // Root causes of "sometimes absolutely no sound" in 3.0 (details in NOTES/31-input.md):
+  //  1. gesture unlock listeners were removed after the first success (app.js {once:true} + gest() self-removal), so a
+  //     context that later became 'suspended'/'interrupted' (app switch, screen lock, call, Siri, BT route change,
+  //     iOS/Android audio focus loss) could never be resumed again -> silent until reload.
+  //  2. unlock() only handled 'suspended': iOS 'interrupted' and 'closed' contexts were never resumed/recreated.
+  //  3. visibilitychange resume() outside a gesture is rejected on iOS, and nothing retried it.
+  //  4. an exception inside a music step froze the track forever (step++ skipped); no try/catch in the scheduler.
+  //  5. volumes: setVolumes ignored non-numbers (booleans/strings from toggles), and the load-time read of NC.save happened
+  //     before the save was loaded.
+  //  6. no voice limit: explosion/shot storms could pile up hundreds of nodes -> audio thread overload / dropouts.
+  let E = null, tracks = [], curMode = 'off', timer = null, wd = null, unlocked = false;
+  const LOOK = 0.16, FADE = 1.2, MAX_STEPS = 48;
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const hidden = () => typeof document !== 'undefined' && !!document.hidden;
+  const D = { created: 0, recreated: 0, resumes: 0, resumeOk: 0, errors: 0, lastErr: '', stalls: 0, dropped: 0, healed: 0, lastTick: 0 };
+  function noteErr(e) { D.errors++; D.lastErr = String((e && e.message) || e).slice(0, 120); }
   function musicLevel() { return 0.3 * vol.music; }
-  function applyVol() { if (!E) return; const t = E.ctx.currentTime; E.sfxBus.gain.setTargetAtTime(vol.sfx * 0.9, t, 0.03); E.musBus.gain.setTargetAtTime(musicLevel(), t, 0.05); }
-  function tick() {
-    if (!E || E.ctx.state !== 'running') return;
-    const now = E.ctx.currentTime;
-    for (let k = tracks.length - 1; k >= 0; k--) {
-      const tr = tracks[k];
-      if (!tr.alive) { if (now > tr.dieAt) { try { tr.g.disconnect(); } catch (e) {} tracks.splice(k, 1); } continue; }
-      if (tr.next < now - 0.05) { const skip = Math.ceil((now - tr.next) / tr.sp); tr.step += skip; tr.next += skip * tr.sp; } // after stall, skip instead of bursting
-      if (vol.music > 0) scheduleTrack(E, tr, now + LOOK);
-      else { tr.next = now + 0.05; }
-    }
+  let volT = 0;
+  function setParam(p, v, tc) { // safe AudioParam set: direct when not running (automation can stall on a suspended ctx)
+    const c = E.ctx, t = c.currentTime;
+    try {
+      p.cancelScheduledValues(t);
+      if (c.state === 'running' && tc) { p.setValueAtTime(p.value, t); p.setTargetAtTime(v, t, tc); }
+      else { p.value = v; p.setValueAtTime(v, t); }
+    } catch (e) { try { p.value = v; } catch (e2) { noteErr(e2); } }
   }
-  function startTimer() { if (!timer) timer = setInterval(tick, 30); }
+  function applyVol(hard) {
+    if (!E) return; volT = now();
+    try {
+      setParam(E.sfxBus.gain, vol.sfx * 0.9, hard ? 0 : 0.03);
+      setParam(E.musBus.gain, musicLevel(), hard ? 0 : 0.05);
+      if (hard) setParam(E.out.gain, OUT_GAIN, 0);
+    } catch (e) { noteErr(e); }
+  }
+  // iOS/iPadOS 17+: 'playback' plays through the silent switch (the game is the main audio while music is on);
+  // with music off use 'ambient' so the player's own music app can keep playing.
+  function setSession() {
+    try {
+      const s = navigator.audioSession; if (!s) return;
+      const want = vol.music > 0 ? 'playback' : 'ambient';
+      if (s.type !== want) s.type = want;
+    } catch (e) { /* ignore */ }
+  }
+  function catchUp() { // after a stall/suspend: skip missed steps instead of bursting them
+    if (!E) return;
+    const n = E.ctx.currentTime + 0.05;
+    for (const tr of tracks) if (tr.next < n) { const k = Math.ceil((n - tr.next) / tr.sp); tr.step += k; tr.next += k * tr.sp; }
+  }
+  function tick() {
+    D.lastTick = now();
+    if (!E || E.ctx.state !== 'running') return;
+    try {
+      const t = E.ctx.currentTime;
+      for (let k = tracks.length - 1; k >= 0; k--) {
+        const tr = tracks[k];
+        if (!tr.alive) { if (t > tr.dieAt) { try { tr.g.disconnect(); } catch (e) { /* ignore */ } tracks.splice(k, 1); } continue; }
+        if (tr.next < t - 0.05) { const skip = Math.ceil((t - tr.next) / tr.sp); tr.step += skip; tr.next += skip * tr.sp; }
+        if (vol.music > 0) scheduleTrack(E, tr, t + LOOK, MAX_STEPS);
+        else tr.next = t + 0.05;
+      }
+    } catch (e) { noteErr(e); }
+  }
+  function startTimer() { if (!timer) timer = setInterval(tick, 30); if (!wd) wd = setInterval(watchdog, 2000); }
   function setMode(mode) {
     if (!A.MODES.includes(mode)) mode = 'off';
     curMode = mode;
     if (!E) return;
-    const now = E.ctx.currentTime;
-    for (const tr of tracks) if (tr.alive) { tr.alive = false; tr.dieAt = now + FADE + LOOK + 0.3; tr.g.gain.cancelScheduledValues(now); tr.g.gain.setValueAtTime(tr.g.gain.value, now); tr.g.gain.linearRampToValueAtTime(0, now + FADE); }
-    if (mode === 'off') return;
-    const tr = makeTrack(E, mode, now + 0.08);
-    tr.g.gain.setValueAtTime(0, now); tr.g.gain.linearRampToValueAtTime(1, now + (tracks.length ? FADE : 0.3));
-    tracks.push(tr);
+    try {
+      const t = E.ctx.currentTime;
+      for (const tr of tracks) if (tr.alive) {
+        tr.alive = false; tr.dieAt = t + FADE + LOOK + 0.3;
+        try { tr.g.gain.cancelScheduledValues(t); tr.g.gain.setValueAtTime(tr.g.gain.value, t); tr.g.gain.linearRampToValueAtTime(0, t + FADE); } catch (e) { tr.g.gain.value = 0; }
+      }
+      if (mode === 'off') return;
+      const tr = makeTrack(E, mode, t + 0.08), fade = tracks.length ? FADE : 0.3;
+      tr.g.gain.setValueAtTime(0, t); tr.g.gain.linearRampToValueAtTime(1, t + fade);
+      tr.full = t + fade; // watchdog: after this the gain must be 1
+      tracks.push(tr);
+    } catch (e) { noteErr(e); }
   }
 
-  A.unlock = function () {
+  // ---- context lifecycle
+  function onState() {
+    if (!E) return;
+    const s = E.ctx.state;
+    if (s === 'running') { unlocked = true; catchUp(); applyVol(true); return; }
+    if (s === 'closed') { if (!hidden()) recreate('closed'); return; }
+    // suspended/interrupted by the system while visible (call, Siri, audio focus, BT): retry soon; gestures retry too
+    if (!hidden()) setTimeout(() => resume(false), 350);
+  }
+  function create() {
+    const C = window.AudioContext || window.webkitAudioContext; if (!C) return false;
+    if (!volSet) readSettingsVol();
+    setSession();
+    let ctx;
+    try { ctx = new C({ latencyHint: 'interactive' }); } catch (e) { ctx = new C(); }
+    try { E = buildEngine(ctx); } catch (e) { E = null; try { ctx.close(); } catch (e2) { /* ignore */ } throw e; }
+    try { if (ctx.addEventListener) ctx.addEventListener('statechange', onState); else ctx.onstatechange = onState; } catch (e) { /* ignore */ }
+    D.created++; E.born = now(); E.lastCT = -1; E.lastWall = now(); E.stall = 0; E.notRun = 0;
+    A.ready = true; A.ctx = ctx;
+    tracks = []; active.length = 0;
+    applyVol(true); startTimer();
+    if (curMode !== 'off') { const m = curMode; curMode = 'off'; setMode(m); }
+    if (hidden()) { try { const p = ctx.suspend(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ignore */ } }
+    return true;
+  }
+  function recreate(why) {
+    const old = E; E = null; tracks = [];
+    if (old) { try { old.ctx.removeEventListener && old.ctx.removeEventListener('statechange', onState); old.ctx.onstatechange = null; const p = old.ctx.close(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ignore */ } }
+    D.recreated++; D.lastErr = D.lastErr || ('recreate:' + why);
+    try { create(); } catch (e) { noteErr(e); E = null; A.ready = false; return; }
+    resume(false);
+  }
+  function resume(gesture) {
+    if (!E) return;
+    const c = E.ctx, s = c.state;
+    if (s === 'closed') { recreate('closed'); return; }
+    if (s === 'running' || hidden()) return;
+    D.resumes++;
     try {
-      if (E) { if (E.ctx.state === 'suspended' && !document.hidden) E.ctx.resume(); return; }
-      const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
-      E = buildEngine(new C({ latencyHint: 'interactive' }));
-      unlocked = true; applyVol(); startTimer();
-      if (E.ctx.state === 'suspended') E.ctx.resume();
-      A.ready = true; A.ctx = E.ctx;
-      if (curMode !== 'off') { const m = curMode; curMode = 'off'; setMode(m); }
-    } catch (e) { E = null; A.ready = false; }
+      const p = c.resume();
+      if (p && p.then) p.then(() => { if (E && E.ctx === c && c.state === 'running') { D.resumeOk++; unlocked = true; } }, () => {});
+    } catch (e) { /* ignore */ }
+    if (gesture) iosKick(c);
+  }
+  // old iOS needs a source started INSIDE the gesture to really unlock the context
+  function iosKick(c) {
+    try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); s.onended = () => { try { s.disconnect(); } catch (e) { /* ignore */ } }; } catch (e) { /* ignore */ }
+  }
+  let failG = 0, lastG = 0, failT0 = 0;
+  // NC.audio.unlock(src?) - safe to call on every gesture (and from anywhere); creates, resumes or recreates as needed.
+  A.unlock = function (src) {
+    try {
+      const gesture = src !== 'pad' && src !== 'auto';
+      if (!E) { if (!create()) return false; }
+      const s = E.ctx.state;
+      if (s === 'running') { unlocked = true; failG = 0; lastG = 0; return true; }
+      if (s === 'closed') { recreate('closed'); return false; }
+      if (gesture) {
+        const t = now();
+        // previous gesture's resume() did not get us running -> after 3 tries build a fresh context INSIDE this gesture
+        // (Android can need ~1 s to open the output, so also require 1.5 s since the first failed try)
+        if (t - lastG > 250) { if (lastG) { if (!failG) failT0 = t; failG++; } lastG = t; }
+        if (failG >= 3 && t - failT0 > 1500 && !hidden()) { failG = 0; lastG = 0; recreate('stuck-' + s); return false; }
+      }
+      resume(gesture);
+    } catch (e) { noteErr(e); }
+    return !!(E && E.ctx.state === 'running');
   };
+
+  // ---- watchdog (every 2 s): only acts while the page is visible
+  let hintT = 0;
+  function watchdog() {
+    if (hidden()) { if (E) { E.lastCT = -1; E.notRun = 0; } return; }
+    try {
+      if (!E) { if (unlocked) { try { create(); } catch (e) { noteErr(e); } } return; }
+      const c = E.ctx, s = c.state, t = now();
+      if (s === 'closed') { recreate('closed'); return; }
+      if (s !== 'running') {
+        E.notRun += 2; resume(false);
+        // pad-only players can't unlock by gesture (gamepad input is not a user activation) -> tell them once in a while
+        const wantSound = vol.music > 0 || vol.sfx > 0;
+        if (wantSound && E.notRun >= 4 && t - hintT > 60000 && NC.Input && NC.Input.device === 'pad') {
+          hintT = t; try { NC.ui && NC.ui.toast && NC.ui.toast(NC.t ? NC.t('in.audioTap') : 'Tap the screen or press a key to enable sound', 'warm', 4500); } catch (e) { /* ignore */ }
+        }
+        return;
+      }
+      E.notRun = 0;
+      // clock stalled while 'running' (Android/Firefox after BT or device route changes, iOS after interruptions)
+      const ct = c.currentTime;
+      if (E.lastCT >= 0 && t - E.lastWall > 1500 && ct - E.lastCT < 0.05) { E.stall++; D.stalls++; } else E.stall = 0;
+      E.lastCT = ct; E.lastWall = t;
+      if (E.stall >= 2) { recreate('stall'); return; }
+      // gains that should be up but are not (stuck automation, external toggles)
+      const fix = (p, want) => { if (Math.abs(p.value - want) > 0.05) { setParam(p, want, 0); D.healed++; } };
+      fix(E.out.gain, OUT_GAIN);
+      if (t - volT > 1000) { fix(E.sfxBus.gain, vol.sfx * 0.9); fix(E.musBus.gain, musicLevel()); }
+      for (const tr of tracks) if (tr.alive && tr.full && ct > tr.full + 0.5 && tr.g.gain.value < 0.95) { setParam(tr.g.gain, 1, 0); D.healed++; }
+      // music must be playing when a mode is set (after recreate / interruption)
+      if (curMode !== 'off' && !tracks.some(x => x.alive)) { const m = curMode; curMode = 'off'; setMode(m); }
+      if (t - D.lastTick > 1000) { clearInterval(timer); timer = null; startTimer(); }
+      pruneVoices(ct);
+    } catch (e) { noteErr(e); }
+  }
+
+  // ---- own listeners (never removed). Activation events: keydown, mousedown, pointerdown/up, touchend, click.
+  const gest = () => { A.unlock('gesture'); };
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    ['pointerdown', 'pointerup', 'mousedown', 'touchend', 'keydown', 'click'].forEach(ev => window.addEventListener(ev, gest, { capture: true, passive: true }));
+    window.addEventListener('focus', () => { if (E) resume(false); });
+    window.addEventListener('pageshow', () => { if (E) { resume(false); catchUp(); } });
+  }
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => {
+      if (!E) return;
+      if (document.hidden) { try { const p = E.ctx.suspend(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ignore */ } }
+      else { resume(false); catchUp(); }
+    });
+    document.addEventListener('resume', () => { if (E) resume(false); }); // Page Lifecycle (Chrome Android freeze/resume)
+  }
+  try {
+    const md = navigator.mediaDevices;
+    if (md && md.addEventListener) md.addEventListener('devicechange', () => { if (!E) return; resume(false); setTimeout(() => { if (E) { E.lastCT = -1; watchdog(); } }, 1500); });
+  } catch (e) { /* ignore */ }
+
+  // ---- public API (unchanged) + diagnostics
   A.music = function (mode) { if (mode === curMode && (mode === 'off' || tracks.some(t => t.alive))) return; setMode(mode); };
   A.currentMode = () => curMode;
   A.setVolumes = function (m, s) {
-    if (typeof m === 'number' && isFinite(m)) vol.music = Math.max(0, Math.min(1, m));
-    if (typeof s === 'number' && isFinite(s)) vol.sfx = Math.max(0, Math.min(1, s));
-    applyVol();
+    const mm = normVol(m, 'music'), ss = normVol(s, 'sfx');
+    if (mm != null) { vol.music = mm; if (mm > 0) lastOn.music = mm; }
+    if (ss != null) { vol.sfx = ss; if (ss > 0) lastOn.sfx = ss; }
+    if (mm != null || ss != null) volSet = true;
+    applyVol(false);
+    if (mm != null) setSession();
   };
+  A._heal = () => watchdog();           // test hook: run one watchdog pass now
+  A._recreate = () => recreate('manual'); // test hook
+  A.musicOn = () => vol.music > 0;
+  A.sfxOn = () => vol.sfx > 0;
+  A.state = () => ({ ctx: E ? E.ctx.state : 'none', time: E ? +E.ctx.currentTime.toFixed(2) : 0, unlocked, mode: curMode,
+    tracks: tracks.length, voices: voiceCount(), vol: Object.assign({}, vol), stats: Object.assign({}, D) });
+
+  // ---- SFX with voice limiting
+  // each sfx call records how many voices it started (T/Nz count them) and when the last one ends
+  const active = [];  // [{end, n}]
+  const MAX_V = 36, MAX_V_HI = 60; // low-priority (shots/hits/explosions/pickups) stop at MAX_V, UI/important sfx at MAX_V_HI
+  const LOW = { shoot_laser: 1, shoot_plasma: 1, shoot_missile: 1, shoot_rail: 1, shoot_flame: 1, hit: 1, crit: 1, explode_s: 1, explode_m: 1, explode_l: 1,
+    pickup_star: 1, pickup_crystal: 1, shield_hit: 1, beam_charge: 1, beam_fire: 1, mine: 1 };
+  function pruneVoices(t) { for (let i = active.length - 1; i >= 0; i--) if (active[i].end <= t) active.splice(i, 1); }
+  function voiceCount() { let n = 0; for (const a of active) n += a.n; return n; }
+  let pokeT = 0;
   A.sfx = function (name, param) {
-    const f = SFX[name]; if (!f || !E || vol.sfx <= 0 || E.ctx.state !== 'running') return false;
-    const now = performance.now(), gap = GAP[name] || 50;
-    if (now - (last[name] || 0) < gap) return false;
-    if (now - budgetT > 100) { budgetT = now; budget = 0; }
-    if (++budget > 10) return false; // global cap: max 10 sfx per 100ms
-    last[name] = now;
-    try { f(E, E.ctx.currentTime + 0.005, param); } catch (e) { return false; }
+    const f = SFX[name]; if (!f || vol.sfx <= 0) return false;
+    if (!E || E.ctx.state !== 'running') { // keep trying to get the context back (throttled; works with sticky activation)
+      const t = now(); if (unlocked && t - pokeT > 1000) { pokeT = t; if (E) resume(false); else try { create(); } catch (e) { noteErr(e); } }
+      return false;
+    }
+    const t = now(), gap = GAP[name] || 50, low = !!LOW[name];
+    if (t - (last[name] || 0) < gap) return false;
+    if (t - budgetT > 100) { budgetT = t; budget = 0; }
+    if (low && ++budget > 10) return false; // global cap: max 10 gameplay sfx per 100ms (UI sfx always pass)
+    const ct = E.ctx.currentTime; pruneVoices(ct);
+    const vc = voiceCount();
+    if (vc >= (low ? MAX_V : MAX_V_HI)) { D.dropped++; return false; }
+    last[name] = t;
+    E.vn = 0; E.vend = ct;
+    try { f(E, ct + 0.005, typeof param === 'number' && !isFinite(param) ? undefined : param); }
+    catch (e) { noteErr(e); return false; }
+    finally { if (E && E.vn) active.push({ end: E.vend + 0.05, n: E.vn }); }
     return true;
   };
-  document.addEventListener('visibilitychange', () => {
-    if (!E) return;
-    if (document.hidden) E.ctx.suspend().catch(() => {});
-    else if (unlocked) E.ctx.resume().then(() => { const n = E.ctx.currentTime + 0.05; for (const tr of tracks) if (tr.next < n) { const k = Math.ceil((n - tr.next) / tr.sp); tr.step += k; tr.next += k * tr.sp; } }).catch(() => {});
-  });
-  // auto-unlock on first gesture (harmless if app also calls unlock)
-  const gest = () => { A.unlock(); if (E && E.ctx.state === 'running') ['pointerdown', 'keydown', 'touchend'].forEach(ev => window.removeEventListener(ev, gest, true)); };
-  ['pointerdown', 'keydown', 'touchend'].forEach(ev => window.addEventListener(ev, gest, true));
 
   // ------------------------------------------------------------------ offline test helpers
   function analyse(buf) {

@@ -1,5 +1,6 @@
 'use strict';
-// Neon Comet 3.0 engine: enemy roster per sector (SPEC §6.5), spawning and AI. Enemies mostly come from the top.
+// Neon Comet 3.1 engine: enemy roster per sector (SPEC §6.5), spawning and AI. Enemies mostly come from the top.
+// 3.1: resting/hover positions stay below the top HUD (NC.game.hudTop + 4, SPEC-31 §2.4); entering ones dive below it fast.
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = () => NC.fx;
@@ -53,7 +54,11 @@
     const list = EN.roster(sector);
     return U.weighted(list.map(id => [id, (fresh.includes(id) ? 1.6 : 1) * (id === 'mine' ? 0.6 : id === 'carrier' || id === 'bulwark' ? 0.6 : 1)]));
   };
-  const scale = (sector) => (NC.DATA && NC.DATA.sectorScale ? NC.DATA.sectorScale(Math.min(sector, 10)) : { hp: 1 + 0.08 * Math.min(sector, 10), dmg: 1 + 0.05 * Math.min(sector, 10) });
+  // top of the playable band for an enemy centre (whole sprite below the HUD) and a band of `span` px under it
+  const top = (e) => (X.safeTop ? X.safeTop() : 26) + (e.size || 16) * 0.5;
+  const band = (e, y, span) => U.clamp(y, top(e), Math.max(top(e), Math.min(top(e) + span, X.G.H * 0.62)));
+  EN.top = top;
+  const scale = (sector) => (NC.DATA && NC.DATA.sectorScale ? NC.DATA.sectorScale(sector) : { hp: 1 + 0.08 * Math.min(sector, 10), dmg: 1 + 0.05 * Math.min(sector, 10) });
 
   // spawn(type, {x,y,elite,parent}) ; returns enemy or null when the 20 cap is reached
   EN.spawn = (type, o = {}) => {
@@ -66,16 +71,17 @@
     const e = {
       kind: 'enemy', type, d, size: s, r: Math.max(4, Math.round(s * 0.38)), elite,
       x: fromTop ? U.rnd(s, G.W - s) : o.x, y: fromTop ? -s / 2 - U.rnd(0, 20) : o.y,
-      vx: 0, vy: fromTop ? d.sp + 20 : 0, hp, max: hp, dmg: d.dmg * (elite ? EL.dmg : 1) * sc.dmg,
+      vx: 0, vy: fromTop ? Math.max(d.sp + 20, 70) : 0, hp, max: hp, dmg: d.dmg * (elite ? EL.dmg : 1) * sc.dmg,
       t: U.rnd(0, 3), flash: 0, entering: fromTop, state: 'idle', st: U.rnd(1, 2.5), fireT: U.rnd(1.2, 2.6), seed: Math.random() * 10, burn: null,
     };
-    e.homeY = U.rnd(14, G.H * 0.45);
-    if (type === 'hunter' && fromTop && Math.random() < 0.4) { const left = Math.random() < 0.5; e.x = left ? -s : G.W + s; e.y = U.rnd(20, G.H * 0.5); e.vx = left ? 40 : -40; e.vy = 0; }
+    e.homeY = U.rnd(top(e), Math.max(top(e) + 8, G.H * 0.45));
+    if (type === 'hunter' && fromTop && Math.random() < 0.4) { const left = Math.random() < 0.5; e.x = left ? -s : G.W + s; e.y = U.rnd(top(e), Math.max(top(e) + 8, G.H * 0.5)); e.vx = left ? 40 : -40; e.vy = 0; e.entering = false; }
     if (type === 'bulwark') e.shieldBlocks = (ang) => !e.cloaked && Math.abs(U.angDiff(ang, -Math.PI / 2)) < 1.0;
     if (o.vx != null) { e.vx = o.vx; e.vy = o.vy; e.entering = false; }
     R.enemies.push(e);
     R.stats.maxOnScreen = Math.max(R.stats.maxOnScreen, R.enemies.length);
     R.seenTypes[type] = R.seenTypes[type] || R.sector;
+    if (elite && X.onElite) X.onElite(e);
     return e;
   };
 
@@ -91,15 +97,18 @@
       if (e.leaving != null) { e.leaving -= dt; e.y -= 60 * dt; if (e.leaving <= 0) { e.dead = true; e.silent = true; F().anim('fx_spark', e.x, e.y); } continue; }
       e.t += dt; e.flash = Math.max(0, e.flash - dt);
       if (e.burn) { e.burn.t -= dt; e.burnTick = (e.burnTick || 0) - dt; if (e.burnTick <= 0) { e.burnTick = 0.25; X.damage(e, e.burn.dps * 0.25, false, e.x, e.y, { quiet: true }); } if (e.burn && e.burn.t <= 0) e.burn = null; if (e.dead) continue; }
-      if (e.entering) { e.y += e.vy * dt; if (e.y >= Math.min(e.homeY, 16)) { e.entering = false; e.vy = e.d.sp * 0.5; } continue; }
+      if (e.entering) { e.y += e.vy * dt; if (e.y >= top(e)) { e.entering = false; e.vy = e.d.sp * 0.5; } continue; }
       ai(e, dt, R, G, p);
       if (R.event && R.event.id === 'blackhole') X.gravity(e, dt, 0.25);
       e.x += e.vx * dt; e.y += e.vy * dt;
       const h = e.size / 2;
       if (e.ai !== 'free') {
         if (e.x < h) { e.x = h; e.vx = Math.abs(e.vx); } else if (e.x > G.W - h) { e.x = G.W - h; e.vx = -Math.abs(e.vx); }
-        if (e.wrap) { if (e.y > G.H + e.size) { e.y = -e.size; e.x = U.rnd(h, G.W - h); e.wrap = false; e.state = 'idle'; e.st = U.rnd(1, 2); e.vy = e.d.sp * 0.5; e.vx = 0; e.entering = true; e.homeY = U.rnd(14, G.H * 0.4); } }
-        else if (e.y < h) { e.y = h; e.vy = Math.abs(e.vy); } else if (e.y > G.H - h) { e.y = G.H - h; e.vy = -Math.abs(e.vy); }
+        if (e.wrap) { if (e.y > G.H + e.size) { e.y = -e.size; e.x = U.rnd(h, G.W - h); e.wrap = false; e.state = 'idle'; e.st = U.rnd(1, 2); e.vy = Math.max(e.d.sp + 20, 70); e.vx = 0; e.entering = true; e.homeY = U.rnd(top(e), Math.max(top(e) + 8, G.H * 0.4)); } }
+        else if (e.y > G.H - h) { e.y = G.H - h; e.vy = -Math.abs(e.vy); }
+        // HUD safe zone: never rest/hover under the top HUD -> eased back down (no snapping)
+        const ty = top(e);
+        if (!e.wrap && e.y < ty) { e.y += (ty - e.y) * Math.min(1, dt * 6) + 4 * dt; if (e.vy < 0) e.vy = -e.vy * 0.5; }
       }
       // contact with player
       if (p.alive && !e.cloaked && U.d2(e.x, e.y, p.x, p.y) < (e.r + p.r) ** 2) X.contact(e);
@@ -110,27 +119,27 @@
     const d = e.d, sp = d.sp;
     switch (d.ai) {
       case 'drone': {
-        const tx = U.clamp(G.W / 2 + Math.sin(e.t * 0.6 + e.seed) * G.W * 0.42, 10, G.W - 10), ty = e.homeY + Math.sin(e.t * 1.3 + e.seed) * 12;
+        const tx = U.clamp(G.W / 2 + Math.sin(e.t * 0.6 + e.seed) * G.W * 0.42, 10, G.W - 10), ty = Math.max(top(e), e.homeY + Math.sin(e.t * 1.3 + e.seed) * 12);
         steer(e, tx, ty, sp, 1.5, dt);
-        if (Math.random() < dt * 0.05) e.homeY = U.rnd(14, G.H * 0.6);
+        if (Math.random() < dt * 0.05) e.homeY = U.rnd(top(e), Math.max(top(e) + 8, G.H * 0.6));
         break;
       }
       case 'dart': {
         e.st -= dt;
-        if (e.state === 'idle') { steer(e, U.clamp(p.x + Math.sin(e.seed) * 40, 10, G.W - 10), e.homeY, 60, 2, dt); if (e.st <= 0) { e.state = 'dive'; e.wrap = true; } }
+        if (e.state === 'idle') { steer(e, U.clamp(p.x + Math.sin(e.seed) * 40, 10, G.W - 10), Math.max(top(e), e.homeY), 60, 2, dt); if (e.st <= 0) { e.state = 'dive'; e.wrap = true; } }
         else { e.vy = Math.min(sp * 1.6, e.vy + 160 * dt); e.vx += U.clamp(p.x - e.x, -1, 1) * 40 * dt; }
         break;
       }
       case 'mine': {
-        e.vx = Math.sin(e.t * 0.5 + e.seed) * sp; e.vy = Math.cos(e.t * 0.4 + e.seed) * sp * 0.6 + (e.y < G.H * 0.5 ? 4 : -4);
+        e.vx = Math.sin(e.t * 0.5 + e.seed) * sp; e.vy = Math.cos(e.t * 0.4 + e.seed) * sp * 0.6 + (e.y < G.H * 0.5 ? 4 : -4) + (e.y < top(e) + 6 ? sp : 0);
         if (e.state === 'idle' && p.alive && U.d2(e.x, e.y, p.x, p.y) < 26 * 26) { e.state = 'arm'; e.st = 0.7; U.sfx('warn'); }
         if (e.state === 'arm') { e.vx = e.vy = 0; e.st -= dt; e.flash = Math.floor(e.st * 10) % 2 ? 0.05 : 0; if (e.st <= 0) { X.blast(e.x, e.y, 22, e.dmg, '#ff0044'); e.dead = true; e.silent = true; } }
         break;
       }
-      case 'hunter': case 'mini': steer(e, p.x, p.y - (d.ai === 'mini' ? 0 : 6), sp, d.ai === 'mini' ? 2.5 : 1.2, dt); break;
+      case 'hunter': case 'mini': steer(e, p.x, Math.max(top(e), p.y - (d.ai === 'mini' ? 0 : 6)), sp, d.ai === 'mini' ? 2.5 : 1.2, dt); break;
       case 'shard': if (!e.vx && !e.vy) { const a = U.rnd(0, U.TAU); e.vx = Math.cos(a) * sp; e.vy = Math.sin(a) * sp; } break;
       case 'gunner': {
-        steer(e, U.clamp(G.W / 2 + Math.sin(e.t * 0.5 + e.seed) * G.W * 0.4, 12, G.W - 12), U.clamp(e.homeY, 16, 60), sp, 1.2, dt);
+        steer(e, U.clamp(G.W / 2 + Math.sin(e.t * 0.5 + e.seed) * G.W * 0.4, 12, G.W - 12), band(e, e.homeY, 44), sp, 1.2, dt);
         e.fireT -= dt;
         if (e.fireT <= 0) {
           const a = aimAt(e, 75), n = R.sector >= 3 ? 3 : 1;
@@ -142,37 +151,37 @@
       case 'splitter': if (Math.abs(e.vx) + Math.abs(e.vy) < 4) { const a = U.rnd(0.3, Math.PI - 0.3); e.vx = Math.cos(a) * sp; e.vy = Math.sin(a) * sp; } break;
       case 'charger': {
         e.st -= dt;
-        if (e.state === 'idle') { steer(e, U.clamp(p.x, 12, G.W - 12), U.clamp(e.homeY, 16, 70), sp * 2, 1, dt); if (e.st <= 0) { e.state = 'aim'; e.st = 0.75; } }
+        if (e.state === 'idle') { steer(e, U.clamp(p.x, 12, G.W - 12), band(e, e.homeY, 54), sp * 2, 1, dt); if (e.st <= 0) { e.state = 'aim'; e.st = 0.75; } }
         else if (e.state === 'aim') { e.vx *= 0.8; e.vy *= 0.8; const t = lead(e.x, e.y, 200); e.tx = t.x; e.ty = t.y; if (e.st <= 0) { const a = Math.atan2(e.ty - e.y, e.tx - e.x); e.vx = Math.cos(a) * 200; e.vy = Math.sin(a) * 200; e.state = 'go'; e.st = 0.9; e.wrap = true; } }
         else if (e.state === 'go' && e.st <= 0) { e.state = 'idle'; e.st = U.rnd(1.5, 2.5); e.wrap = false; e.vx *= 0.2; e.vy = -20; }
         break;
       }
       case 'sentinel': {
-        steer(e, U.clamp(G.W * (0.2 + 0.6 * ((e.seed * 7) % 1)) + Math.sin(e.t * 0.3) * 30, 16, G.W - 16), U.clamp(e.homeY, 18, 55), sp, 1, dt);
+        steer(e, U.clamp(G.W * (0.2 + 0.6 * ((e.seed * 7) % 1)) + Math.sin(e.t * 0.3) * 30, 16, G.W - 16), band(e, e.homeY, 37), sp, 1, dt);
         e.fireT -= dt;
         if (e.fireT <= 0) { X.R.beams.push({ src: e, x: e.x, y: e.y, ang: Math.atan2(p.y - e.y, p.x - e.x), len: 400, w: 5, charge: 1.1, fire: 0.5, t: 0, dmg: e.dmg * 2, tick: 0, owner: 'enemy', col: '#2ce8f5' }); e.fireT = U.rnd(4.2, 5.4); U.sfx('beam_charge'); }
         break;
       }
       case 'wraith': {
         e.st -= dt;
-        if (e.state === 'idle') { steer(e, e.tx || e.x, e.ty || e.y, sp, 1.5, dt); if (e.st <= 0) { const a = aimAt(e, 80); for (let i = -1; i <= 1; i++) X.eshoot(e.x, e.y, a + i * 0.25, 80, e.dmg, 'eb_small'); e.state = 'cloak'; e.st = 2; e.cloaked = true; e.untargetable = true; e.tx = U.rnd(16, G.W - 16); e.ty = U.rnd(16, G.H * 0.5); } }
+        if (e.state === 'idle') { steer(e, e.tx || e.x, Math.max(top(e), e.ty || e.y), sp, 1.5, dt); if (e.st <= 0) { const a = aimAt(e, 80); for (let i = -1; i <= 1; i++) X.eshoot(e.x, e.y, a + i * 0.25, 80, e.dmg, 'eb_small'); e.state = 'cloak'; e.st = 2; e.cloaked = true; e.untargetable = true; e.tx = U.rnd(16, G.W - 16); e.ty = U.rnd(top(e), Math.max(top(e) + 8, G.H * 0.5)); } }
         else { steer(e, e.tx, e.ty, sp * 1.6, 2, dt); if (e.st <= 0) { e.state = 'idle'; e.st = 2.4; e.cloaked = false; e.untargetable = false; } }
         break;
       }
       case 'carrier': {
-        steer(e, U.clamp(G.W / 2 + Math.sin(e.t * 0.25 + e.seed) * G.W * 0.35, 22, G.W - 22), 30, sp, 0.8, dt);
+        steer(e, U.clamp(G.W / 2 + Math.sin(e.t * 0.25 + e.seed) * G.W * 0.35, 22, G.W - 22), top(e) + 4, sp, 0.8, dt);
         e.fireT -= dt;
         if (e.fireT <= 0) { for (let i = 0; i < 3; i++) EN.spawn('mini', { x: e.x + U.rnd(-8, 8), y: e.y + 10, vx: U.rnd(-30, 30), vy: 40, elite: false }); e.fireT = U.rnd(3.6, 4.6); F().ring(e.x, e.y, e.d.col, 22, 0.3); }
         break;
       }
       case 'bulwark': {
-        steer(e, U.clamp(p.x, 22, G.W - 22), U.clamp(e.homeY, 24, 60), sp, 0.8, dt);
+        steer(e, U.clamp(p.x, 22, G.W - 22), band(e, e.homeY, 36), sp, 0.8, dt);
         e.fireT -= dt;
         if (e.fireT <= 0) { X.eshoot(e.x, e.y + 12, aimAt(e, 60), 60, e.dmg * 1.2, 'eb_big'); e.fireT = U.rnd(2.8, 3.6); }
         break;
       }
       case 'artillery': {
-        steer(e, U.clamp(G.W * ((e.seed * 3) % 1), 18, G.W - 18), U.clamp(e.homeY, 16, 45), sp, 1, dt);
+        steer(e, U.clamp(G.W * ((e.seed * 3) % 1), 18, G.W - 18), band(e, e.homeY, 29), sp, 1, dt);
         e.fireT -= dt;
         if (e.fireT <= 0) { const t = lead(e.x, e.y, 90); X.R.shells.push({ x0: e.x, y0: e.y, x: U.clamp(t.x, 6, G.W - 6), y: U.clamp(t.y, 6, G.H - 6), t: 0, dur: 1.3, r: 18, dmg: e.dmg }); e.fireT = U.rnd(3.2, 4); }
         break;

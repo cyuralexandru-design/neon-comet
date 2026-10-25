@@ -1,11 +1,14 @@
 'use strict';
-// Neon Comet 3.0 engine: run state, game loop, director (spawns, bosses, mini-bosses, sector events, biomes),
-// player, pickups, consumables, cards + reroll, revive, HUD (NC.hud) and debug hooks (NC.debug). SPEC §5–§6.
+// Neon Comet 3.1 engine: run state, game loop (fps cap 60/120), director (spawns, bosses, mini-bosses, sector events, biomes),
+// player, pickups (crystals, xp orbs, light-sphere stars), consumables, cards (rarity-weighted) + reroll, revive, HUD (NC.hud),
+// icon alerts / sector intro (SPEC-31 §2.1-2.2), runStats() (§2.5) and debug hooks (NC.debug). SPEC §5–§6 + SPEC-31.
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = NC.fx, EN = NC.enemies, B = NC.bosses, W = NC.weapons;
-  const G = NC.game = { mode: 'menu', W: 320, H: 180, run: null, fps: 60, version: '3.0.0' };
+  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.1.0', hudTop: 22 };
   X.G = G;
+  // HUD safe line (logical px): HUD agent sets NC.game.hudTop = bottom of the top HUD; nothing rests above hudTop + 4
+  X.safeTop = () => { const h = +G.hudTop; return U.clamp(isFinite(h) && h > 0 ? h : 22, 0, G.H * 0.3) + 4; };
   const D = () => NC.DATA || {};
   const sys = (fn, ...a) => { try { if (NC.sys && typeof NC.sys[fn] === 'function') return NC.sys[fn](...a); } catch (e) { console.error('NC.sys.' + fn, e); } return undefined; };
   const BIOMES = ['nebula', 'asteroid', 'ion', 'station'];
@@ -13,7 +16,15 @@
   NC.hud = { score: 0, combo: 1, sector: 0, biome: 'nebula', hp: 0, maxHp: 1, shd: 0, maxShd: 1, atk: 0, crystals: 0, runLvl: 1, runXp: 0, runNeed: 1, dashCd01: 0, consumables: [], boss: null, fps: 0 };
 
   // ------------------------------------------------------------ init + loop
-  let last = 0, fpsEma = 60;
+  // FPS cap (SPEC-31 §2.8): settings.fpsCap 60 | 120 (default 60). rAF fires at the display rate; frames are skipped on a fixed
+  // schedule (accumulated time, tolerance = half a vsync) so the average rate is exactly min(cap, display Hz) on 50-240 Hz screens.
+  // The simulation uses the real elapsed time between rendered frames (sub-stepped at <= 1/60 s), so it is rate independent.
+  let last = 0, fpsEma = 60, nextT = 0, rafEma = 16.7, rafLast = 0;
+  G.fpsCap = () => {
+    let c = 60;
+    try { const st = NC.ui && typeof NC.ui.settings === 'function' ? NC.ui.settings() : U.settings(); c = +(st && st.fpsCap) || 60; } catch (e) { c = 60; }
+    return c >= 110 ? 120 : 60;
+  };
   G.init = (canvas) => {
     G.canvas = canvas;
     NC.render.init(canvas);
@@ -22,8 +33,12 @@
   };
   function loop(now) {
     requestAnimationFrame(loop);
+    if (rafLast) { const d = now - rafLast; if (d > 0 && d < 100) rafEma += (d - rafEma) * 0.1; } rafLast = now;
+    const iv = 1000 / G.fpsCap(), tol = Math.min(rafEma * 0.5, iv * 0.5);
+    if (nextT && now < nextT - tol) return; // skip this vsync (cap)
+    nextT = nextT && now - nextT < iv ? nextT + iv : now + iv;
     const rdt = last ? Math.min(0.25, (now - last) / 1000) : 1 / 60; last = now;
-    if (rdt > 0) fpsEma += ((1 / rdt) - fpsEma) * 0.08;
+    if (rdt > 0) fpsEma += ((1 / rdt) - fpsEma) * 0.08; // real rendered-frame rate
     G.fps = Math.round(fpsEma);
     try {
       NC.Input.poll(rdt);
@@ -71,7 +86,7 @@
       enemies: [], ebullets: [], beams: [], mines: [], shells: [], orbs: [], items: [], rocks: [], bullets: [], rails: [],
       boss: null, mboss: null, spawnQ: [], event: null, eventT: U.rnd(...(D().EVENT_FIRST || D().EVENT_INTERVAL || [60, 90])), buffs: { shield: 0, magnet: 0, x2: 0, over: 0 },
       cons: cons.filter(c => c.id && c.count > 0).map(c => ({ id: c.id, count: c.count, cd: 0, max: consDef(c.id).cd || 3 })), consUsed: {},
-      revives: 0, autoRevived: false, chests: [], dying: 0, stats: { maxOnScreen: 0, firstBossAt: null, bossDeaths: [] }, seenTypes: {}, rosterLog: {},
+      revives: 0, autoRevived: false, chests: [], dying: 0, stats: { maxOnScreen: 0, firstBossAt: null, bossDeaths: [] }, seenTypes: {}, rosterLog: {}, eliteAlertT: -99,
       p: { x: G.W / 2, y: G.H * 0.78, vx: 0, vy: 0, r: 5, hp: 1, shd: 1, shdT: 0, inv: 1.5, dashT: 0, dashCd: 0, fireT: 0.3, alive: true, hurtT: 0, aimAng: -Math.PI / 2 },
       lvlBefore: st.lvl,
     };
@@ -80,11 +95,17 @@
     G.mode = 'play'; NC.Input.clear();
     U.music(R.biome);
     U.ui('onRunStart');
-    U.ui('banner', 'banner.sector', '1');
+    sectorUi();
     logRoster();
     return R;
   };
-  const xpFor = (l) => (D().runXpFor ? D().runXpFor(l) : Math.round(18 + l * 9 + Math.pow(l, 1.6) * 2));
+  // run-level XP curve: NC.DATA.runXpFor (data agent); fallback = the 3.1 steeper curve
+  const xpFor = (l) => (D().runXpFor ? D().runXpFor(l) : Math.round(50 + 20 * l + 6 * Math.pow(l, 1.9)));
+  // sector intro + permanent label (SPEC-31 §2.2): n is 1-based, biome = id ('nebula'...), 4th arg = its i18n key
+  function sectorUi() { const R = X.R; U.ui('sector', R.sector + 1, R.biome, 'biome.' + R.biome + '.name'); }
+  // icon alerts (SPEC-31 §2.1). Data carries only ids / i18n keys (never translated text), the HUD translates at draw time.
+  const alert = (type, data) => U.ui('alert', type, Object.assign({ textKey: 'eng.al.' + type }, data || {}));
+  X.onElite = (e) => { const R = X.R; if (!R || R.time - R.eliteAlertT < 8) return; R.eliteAlertT = R.time; alert('elite', { nameKey: 'en.' + e.type + '.name', id: e.type }); };
   const consDef = (id) => (D().CONSUMABLES || []).find(c => c.id === id) || { id, cd: 3, dur: { shield: 10, magnet: 15, x2: 30 }[id], heal: 0.5, mult: 2, bossDmgCap: 0.3 };
   function applyMaxes() {
     const R = X.R, oh = R.maxHp || 1, os = R.maxShd || 1;
@@ -155,22 +176,30 @@
   X.damagePlayer = (dmg) => {
     const R = X.R, p = R.p;
     if (!p.alive || p.inv > 0 || p.dashT > 0 || R.buffs.shield > 0 || G.god) return false;
-    if (R.st.flags.evasion && Math.random() < R.st.flags.evasion) { F.pop(p.x, p.y - 12, '0', '#8b9bb4'); p.inv = 0.3; return false; }
+    if (R.st.flags.evasion && Math.random() < R.st.flags.evasion) { F.pop(p.x, p.y - 12, '0', F.COL.dim); p.inv = 0.3; return false; }
     p.shdT = 2.6;
     if (p.shd > 0) { const a = Math.min(p.shd, dmg); p.shd -= a; dmg -= a; U.sfx('shield_hit'); F.ring(p.x, p.y, '#2ce8f5', 12, 0.25); }
     if (dmg > 0) {
       p.hp -= dmg; p.hurtT = 0.4; F.doFlash('#a22633', 0.25); F.doShake(3); U.sfx('hurt'); NC.Input.buzz(60, 0.7);
       F.burst(p.x, p.y, '#e43b44', 8, 60); R.combo = Math.max(1, Math.floor(R.combo / 2));
-      F.pop(p.x, p.y - 14, '-' + Math.round(dmg), '#e43b44');
+      F.pop(p.x, p.y - 14, '-' + Math.round(dmg), F.COL.bad);
     }
     p.inv = 0.6;
     if (p.hp <= 0) die();
     return true;
   };
-  X.dropCrystals = (x, y, value) => {
-    const R = X.R, n = Math.max(1, Math.min((D().DROPS && D().DROPS.crystalSplit) || 3, Math.ceil(value / 15)));
-    for (let i = 0; i < n; i++) { const a = U.rnd(0, U.TAU), v = U.rnd(20, 60); R.items.push({ kind: 'cr', spr: 'pk_crystal', v: value / n, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 12 }); }
+  X.dropCrystals = (x, y, value, maxN, home) => {
+    const R = X.R, n = Math.max(1, Math.min(maxN || (D().DROPS && D().DROPS.crystalSplit) || 3, Math.ceil(value / 15)));
+    for (let i = 0; i < n; i++) { const a = U.rnd(0, U.TAU), v = U.rnd(20, 60); R.items.push({ kind: 'cr', spr: 'pk_crystal', v: value / n, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 12, home: !!home }); }
   };
+  // XP orbs (SPEC-31 §2.7): kill XP split into 1-3 orbs (bosses more), granted on pickup, magnet pulls them, ~20 s life
+  X.dropXp = (x, y, value, maxN, home) => {
+    const R = X.R; if (!(value > 0)) return;
+    const n = U.clamp(Math.ceil(value / 4), 1, maxN || 3);
+    for (let i = 0; i < n; i++) { const a = U.rnd(0, U.TAU), v = U.rnd(15, 45); R.items.push({ kind: 'xp', spr: 'pk_xp', v: value / n, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: U.rnd(0, 0.4), life: 20, home: !!home }); }
+  };
+  // boss death: every xp orb / crystal on screen flies to the player
+  function homeAll() { for (const it of X.R.items) if (it.kind === 'xp' || it.kind === 'cr') { it.home = true; it.life = Math.max(it.life || 0, 6); } }
   const comboMult = () => 1 + 0.03 * (X.R.combo - 1); // combo cap 20 -> x1.57
   function addScore(base) { const R = X.R; R.score += Math.round(base * comboMult()); }
   function bumpCombo() { const R = X.R; R.combo = Math.min(20, R.combo + 1); R.comboT = 3; R.maxCombo = Math.max(R.maxCombo, R.combo); }
@@ -185,13 +214,16 @@
     addScore(d.score * (e.elite ? EL.points : 1));
     const cr = d.cr * (e.elite ? EL.cr : 1) * R.st.crMult;
     if (cr > 0) X.dropCrystals(e.x, e.y, cr);
-    addXp(d.xp * (e.elite ? EL.xp : 1));
+    X.dropXp(e.x, e.y, d.xp * (e.elite ? EL.xp : 1));
     const DR = D().DROPS || { starChance: 0.55, repairChance: 0.012, supernovaChance: 0.004, eliteChestChance: 0.05 };
-    if (Math.random() < DR.starChance) R.items.push({ kind: 'star', spr: 'pk_star', x: e.x, y: e.y, vx: U.rnd(-20, 20), vy: U.rnd(-30, 0), t: 0, life: 10 });
+    if (Math.random() < DR.starChance) R.items.push({ kind: 'star', spr: 'pk_star', x: e.x, y: e.y, vx: U.rnd(-20, 20), vy: U.rnd(-30, 0), t: 0, life: 10, seed: U.rnd(0, 6) });
     if (Math.random() < DR.repairChance) R.items.push({ kind: 'repair', spr: 'pk_repair', x: e.x, y: e.y, vx: 0, vy: 10, t: 0, life: 10 });
     if (Math.random() < DR.supernovaChance) R.items.push({ kind: 'nova', spr: 'pk_supernova', x: e.x, y: e.y, vx: 0, vy: 10, t: 0, life: 12 });
     if (e.elite && Math.random() < DR.eliteChestChance) R.items.push({ kind: 'chest', r: 0, x: e.x, y: e.y, vx: 0, vy: 15, t: 0 });
-    if (R.m.vamp) R.p.hp = Math.min(R.maxHp, R.p.hp + R.maxHp * R.m.vamp);
+    if (R.m.vamp) { // 3.1 lifesteal capped per second (NC.DATA.HEAL.vampPerSec), bucket holds max 2 s of healing
+      const cap = (((D().HEAL || {}).vampPerSec) || 1) * R.maxHp; R.vampB = Math.min(cap * 2, (R.vampB || 0) + (R.time - (R.vampT || 0)) * cap); R.vampT = R.time;
+      const h = Math.min(R.vampB, R.maxHp * R.m.vamp); R.vampB -= h; R.p.hp = Math.min(R.maxHp, R.p.hp + h);
+    }
     F.explode(e.x, e.y, e.size, d.col);
     EN.onDeath(e);
   }
@@ -205,8 +237,8 @@
     R.ebullets.length = 0; R.beams.length = 0; R.mines.length = 0; R.shells.length = 0; R.orbs.length = 0; R.rocks.length = 0;
     if (R.event) endEvent();
     const def = B.def(R.bossIdx);
-    U.ui('banner', 'banner.bossWarn', U.t('boss.' + def.id + '.name'));
-    U.sfx('warn'); U.music('boss');
+    alert('boss', { id: def.id, nameKey: 'boss.' + def.id + '.name' });
+    U.sfx('warn'); U.music('boss'); NC.Input && NC.Input.buzz && NC.Input.buzz(260, 0.9);
   }
   function killBoss(b) {
     const R = X.R, def = b.def;
@@ -214,30 +246,31 @@
     F.doFlash('#ffffff', 0.6); F.hitstop = 0.2; F.doShake(8); U.sfx('explode_l');
     R.ebullets.length = 0; R.beams.length = 0; R.mines.length = 0; R.orbs.length = 0; R.shells.length = 0;
     R.score += def.points || 5000;
-    X.dropCrystals(b.x, b.y, (def.cr || 1500) * R.st.crMult);
-    addXp(60 * (b.idx + 1));
+    X.dropCrystals(b.x, b.y, (def.cr || 1500) * R.st.crMult, 6, true);
+    X.dropXp(b.x, b.y, 60 * (b.idx + 1), 8, true);
+    homeAll();
     R.items.push({ kind: 'chest', r: def.chest != null ? def.chest : 1, x: b.x, y: b.y, vx: 0, vy: 20, t: 0 });
-    R.p.hp = Math.min(R.maxHp, R.p.hp + R.maxHp * 0.5); R.p.shd = R.maxShd;
+    R.p.hp = Math.min(R.maxHp, R.p.hp + R.maxHp * (((D().HEAL || {}).bossKill) != null ? D().HEAL.bossKill : 0.5)); R.p.shd = R.maxShd;
     R.boss = null; R.bossIdx++; R.bossesKilled++; sys('track', 'bosses', 1);
     R.nextBoss = D().bossScore ? D().bossScore(R.bossIdx) : (R.bossIdx + 1) * BOSS_EVERY();
     U.ui('hideBossBar');
-    U.ui('banner', 'banner.bossDown', U.t('boss.' + def.id + '.name'));
+    alert('bossDown', { id: def.id, nameKey: 'boss.' + def.id + '.name' });
     setSector(R.sector + 1);
     sys('flush');
   }
   function killMini(b) {
     const R = X.R, def = b.def;
     F.explode(b.x, b.y, 48, def.col); F.anim('fx_explode_l', b.x, b.y);
-    R.score += def.points || 2000; X.dropCrystals(b.x, b.y, (def.cr || 600) * R.st.crMult); addXp(25);
+    R.score += def.points || 2000; X.dropCrystals(b.x, b.y, (def.cr || 600) * R.st.crMult, 5, true); X.dropXp(b.x, b.y, 25, 5, true);
     R.items.push({ kind: 'chest', r: def.chest || 0, x: b.x, y: b.y, vx: 0, vy: 20, t: 0 });
     R.mboss = null; sys('track', 'mbosses', 1); U.ui('hideBossBar');
   }
   function setSector(s) {
     const R = X.R; R.sector = s; R.biome = BIOMES[s % BIOMES.length];
     U.music(R.biome); logRoster();
-    U.ui('banner', 'banner.sector', String(s + 1));
+    sectorUi();
     const fresh = EN.NEW[Math.min(s, EN.NEW.length - 1)] || [];
-    if (s > 0 && s < EN.NEW.length) setTimeout(() => { if (X.R === R && !R.boss) U.ui('banner', 'banner.newThreat', fresh.map(id => U.t('en.' + id + '.name')).join(', ')); }, 2600);
+    if (s > 0 && s < EN.NEW.length) setTimeout(() => { if (X.R === R && !R.boss && G.run === R) alert('threat', { ids: fresh.slice(), nameKeys: fresh.map(id => 'en.' + id + '.name') }); }, 2600);
     R.eventT = Math.max(R.eventT, 25);
   }
 
@@ -245,9 +278,9 @@
   function startEvent() {
     const R = X.R, list = D().EVENTS || [{ id: 'asteroids', dur: 20, rocks: 14, rockHp: 40, rockDmg: 20 }, { id: 'ionstorm', dur: 20 }, { id: 'blackhole', dur: 20, pull: 55, radius: 90 }];
     const ev = Object.assign({}, U.pick(list)); ev.t = ev.dur || 20; ev.rockT = 0.5;
-    if (ev.id === 'blackhole') ev.bh = { x: U.rnd(G.W * 0.25, G.W * 0.75), y: U.rnd(G.H * 0.3, G.H * 0.6), pull: ev.pull || 55, radius: Math.min(ev.radius || 90, G.H * 0.5) };
+    if (ev.id === 'blackhole') ev.bh = { x: U.rnd(G.W * 0.25, G.W * 0.75), y: U.rnd(Math.max(G.H * 0.3, X.safeTop() + 20), G.H * 0.6), pull: ev.pull || 55, radius: Math.min(ev.radius || 90, G.H * 0.5) };
     R.event = ev; sys('track', 'events', 1);
-    U.ui('banner', 'event.' + ev.id + '.name', U.t('event.' + ev.id + '.desc')); U.sfx('warn');
+    alert('event', { id: ev.id, nameKey: 'event.' + ev.id + '.name', descKey: 'event.' + ev.id + '.desc' }); U.sfx('warn');
   }
   function endEvent() { const R = X.R; R.event = null; R.eventT = U.rnd(...(D().EVENT_INTERVAL || [60, 90])); }
   function updateEvent(dt) {
@@ -350,7 +383,7 @@
   }
   function afterDeath() {
     const R = X.R;
-    if (R.st.flags.autoRevive && !R.autoRevived) { R.autoRevived = true; doRevive(); U.ui('banner', 'banner.rebirth', ''); return; }
+    if (R.st.flags.autoRevive && !R.autoRevived) { R.autoRevived = true; doRevive(); alert('rebirth', {}); return; }
     const max = (D().REVIVE && D().REVIVE.max) || 3;
     const cost = NC.sys && NC.sys.reviveCost ? sys('reviveCost', R.sector, R.revives) : (R.revives < max ? Math.round(400 * (R.revives + 1) * (1 + 0.6 * R.sector)) : null);
     if (cost == null || R.revives >= max) { endRun(true); return; }
@@ -378,11 +411,13 @@
     const R = X.R, p = R.p, mag = R.buffs.magnet > 0 ? 9999 : R.st.magnet * (1 + R.m.magnet);
     for (const it of R.items) {
       it.t += dt; it.x += it.vx * dt; it.y += it.vy * dt; it.vx *= Math.pow(0.05, dt); it.vy *= Math.pow(0.05, dt);
-      if (it.kind !== 'chest' && it.kind !== 'cr') it.y += 6 * dt;
-      if (it.life != null) { it.life -= dt; if (it.life <= 0) { it.dead = true; continue; } }
+      if (it.kind === 'xp') it.y += 11 * dt; // xp orbs drift towards the player's zone and rest at the bottom edge
+      else if (it.kind !== 'chest' && it.kind !== 'cr') it.y += 6 * dt;
+      if (it.y > G.H - 5 && !it.home) it.y = G.H - 5;
+      if (it.life != null && !it.home) { it.life -= dt; if (it.life <= 0) { it.dead = true; continue; } }
       if (!p.alive) continue;
-      const d2 = U.d2(it.x, it.y, p.x, p.y), pull = it.kind === 'chest' ? it.t > 0.8 : d2 < mag * mag || (it.kind === 'cr' && it.t > 1.2);
-      if (pull) { const d = Math.sqrt(d2) || 1, sp = 120 + it.t * 60; it.x += (p.x - it.x) / d * sp * dt; it.y += (p.y - it.y) / d * sp * dt; }
+      const d2 = U.d2(it.x, it.y, p.x, p.y), pull = it.home ? it.t > 0.25 : it.kind === 'chest' ? it.t > 0.8 : d2 < mag * mag || (it.kind === 'cr' && it.t > 1.2);
+      if (pull) { const d = Math.sqrt(d2) || 1, sp = it.home ? 170 + it.t * 120 : 120 + it.t * 60, m = Math.min(d, sp * dt); it.x += (p.x - it.x) / d * m; it.y += (p.y - it.y) / d * m; }
       if (d2 < (p.r + 7) ** 2) { it.dead = true; collect(it); }
     }
     R.items = R.items.filter(i => !i.dead);
@@ -390,13 +425,14 @@
   function collect(it) {
     const R = X.R, p = R.p;
     if (it.kind === 'cr') { const v = Math.max(1, Math.round(it.v * (R.buffs.x2 > 0 ? (consDef('x2').mult || 2) : 1))); R.crystals += v; sys('addCrystals', v); U.sfx('pickup_crystal'); }
-    else if (it.kind === 'star') { bumpCombo(); addScore(30); addXp(1); sys('track', 'stars', 1); U.sfx('pickup_star', R.combo); F.burst(it.x, it.y, '#fee761', 4, 30, 0.3); }
-    else if (it.kind === 'repair') { p.hp = Math.min(R.maxHp, p.hp + R.maxHp * 0.25); U.sfx('repair'); F.burst(it.x, it.y, '#63c74d', 8, 40); }
+    else if (it.kind === 'xp') { addXp(it.v || 1); U.sfx('pickup_star', 1); }
+    else if (it.kind === 'star') { bumpCombo(); addScore(30); addXp(1); sys('track', 'stars', 1); U.sfx('pickup_star', R.combo); F.burst(it.x, it.y, '#f2c46a', 4, 30, 0.3); }
+    else if (it.kind === 'repair') { p.hp = Math.min(R.maxHp, p.hp + R.maxHp * (((D().HEAL || {}).repair) || 0.25)); U.sfx('repair'); F.burst(it.x, it.y, '#63c74d', 8, 40); }
     else if (it.kind === 'nova') { supernova(); }
-    else if (it.kind === 'chest') { R.chests.push(it.r); sys('addChest', it.r, 1); U.ui('banner', 'banner.chest', U.t('chest.' + it.r + '.name')); U.sfx(it.r >= 3 ? 'legendary' : 'chest_open'); }
+    else if (it.kind === 'chest') { R.chests.push(it.r); sys('addChest', it.r, 1); alert('chest', { r: it.r, nameKey: 'chest.' + it.r + '.name' }); U.sfx(it.r >= 3 ? 'legendary' : 'chest_open'); }
   }
   function supernova() {
-    const R = X.R; U.ui('banner', 'banner.supernova', ''); F.doFlash('#fee761', 0.4); F.ring(R.p.x, R.p.y, '#fee761', Math.max(G.W, G.H), 0.9);
+    const R = X.R; alert('supernova', {}); F.doFlash('#fee761', 0.4); F.ring(R.p.x, R.p.y, '#fee761', Math.max(G.W, G.H), 0.9);
     for (const e of R.enemies) if (!e.dead && e.leaving == null) X.damage(e, e.hp + 1, false, e.x, e.y, { quiet: true });
     R.ebullets.length = 0; R.buffs.over = 8; U.sfx('legendary');
   }
@@ -457,12 +493,24 @@
   function cardList() { return (D().CARDS && D().CARDS.length ? D().CARDS : DEFAULT_CARDS); }
   const DEFAULT_CARDS = [['dmg', 10, 10, 0.15], ['rate', 8, 10, 0.12], ['gun', 3, 6, 1], ['pierce', 2, 4, 1], ['bounce', 2, 5, 1], ['missile', 4, 6, 1], ['orbit', 4, 6, 1], ['shield', 5, 8, 0.3], ['heal', 99, 7, 0.4], ['magnet', 3, 5, 0.5], ['speed', 4, 6, 0.1], ['crit', 5, 7, 0.08], ['vamp', 3, 4, 0.01],
     ...['laser', 'plasma', 'missile', 'rail', 'flame'].map(w => ['evo_' + w, 5, 5, 0.08, w])].map(([id, max, w, val, weapon]) => ({ id, max, w, val, weapon, nameKey: 'card.' + id + '.name', descKey: 'card.' + id + '.desc', sprite: 'card_' + id }));
+  // card rarity (SPEC-31 §2.6): def.r from NC.DATA (data agent); fallback table; evo cards Legendary
+  const CARD_R = { dmg: 0, rate: 0, heal: 0, speed: 0, magnet: 0, shield: 1, bounce: 1, missile: 1, crit: 1, pierce: 2, orbit: 2, vamp: 2, gun: 3 };
+  const cardR = (c) => (typeof c.r === 'number' ? U.clamp(c.r | 0, 0, 4) : c.weapon ? 3 : (CARD_R[c.id] != null ? CARD_R[c.id] : 0));
+  const SPECIAL_OK = {}; // special cards (3.2) are offered only once their engine logic exists (none in 3.1)
+  const rarityW = () => { const w = D().CARD_RARITY_W; return Array.isArray(w) && w.length >= 5 ? w : [46, 28, 16, 8, 2]; };
+  // offers: pick a rarity by weight (only rarities that still have available cards), then a card of that rarity by its w
   G.cardChoices = () => {
-    const R = X.R, wid = R.st.weapon.id;
-    const avail = cardList().filter(c => (R.cards[c.id] || 0) < c.max && (!c.weapon || c.weapon === wid));
+    const R = X.R, wid = R.st.weapon.id, RW = rarityW();
+    const avail = cardList().filter(c => (R.cards[c.id] || 0) < c.max && (!c.weapon || c.weapon === wid) && !(c.special && !SPECIAL_OK[c.id]));
     const out = [];
-    while (out.length < 3 && avail.length) { const c = U.weighted(avail.map(c => [c, c.weapon ? c.w * 1.4 : c.w])); out.push(c); avail.splice(avail.indexOf(c), 1); }
-    return out.map(c => ({ id: c.id, lvl: (R.cards[c.id] || 0) + 1, max: c.max, nameKey: c.nameKey, descKey: c.descKey, sprite: c.sprite || 'card_' + c.id, evo: !!c.weapon }));
+    while (out.length < 3 && avail.length) {
+      const has = [0, 1, 2, 3, 4].filter(r => avail.some(c => cardR(c) === r));
+      const r = U.weighted(has.map(r => [r, RW[r] || 0.0001]));
+      const pool = avail.filter(c => cardR(c) === r);
+      const c = U.weighted(pool.map(c => [c, Math.max(0.01, c.w || 1)]));
+      out.push(c); avail.splice(avail.indexOf(c), 1);
+    }
+    return out.map(c => ({ id: c.id, lvl: (R.cards[c.id] || 0) + 1, max: c.max, r: cardR(c), special: !!c.special, nameKey: c.nameKey, descKey: c.descKey, sprite: c.sprite || 'card_' + c.id, evo: !!c.weapon }));
   };
   const rerollCost = (n) => (NC.sys && NC.sys.rerollCost ? sys('rerollCost', n) : (n <= 0 ? 0 : 50 * Math.pow(2, n - 1)));
   function openCards() {
@@ -559,12 +607,40 @@
     h.score = R.score; h.combo = R.combo; h.comboT01 = R.comboT / 3; h.sector = R.sector + 1; h.biome = R.biome;
     h.hp = Math.max(0, Math.round(p.hp)); h.maxHp = R.maxHp; h.shd = Math.round(p.shd); h.maxShd = R.maxShd; h.atk = Math.round(X.eff().atk);
     const wal = NC.sys && NC.sys.crystals ? sys('crystals') : null; h.crystals = wal != null ? wal : R.crystals; h.runCrystals = R.crystals;
-    h.runLvl = R.runLvl; h.runXp = R.runXp; h.runNeed = R.runNeed;
+    h.runLvl = R.runLvl; h.runXp = Math.floor(R.runXp); h.runNeed = R.runNeed;
     const dcd = R.st.dashCd * R.m.dashCd; h.dashCd01 = dcd > 0 ? U.clamp(p.dashCd / dcd, 0, 1) : 0;
     h.consumables = R.cons.map(c => ({ id: c.id, count: c.count, cd01: c.max ? U.clamp(c.cd / c.max, 0, 1) : 0 }));
-    h.boss = b && b.state !== 'enter' ? { nameKey: b.nameKey, hp01: U.clamp(b.hp / b.max, 0, 1), mini: !b.big, phase: b.phase } : (b ? { nameKey: b.nameKey, hp01: 1, mini: !b.big, phase: 0 } : null);
+    h.boss = b ? { nameKey: b.nameKey, hp01: b.state !== 'enter' ? U.clamp(b.hp / b.max, 0, 1) : 1, mini: !b.big, segs: b.big ? B.PHASES : 1, phase: b.state !== 'enter' ? b.phase : 0, id: b.id } : null;
     h.buffs = Object.assign({}, R.buffs); h.event = R.event ? R.event.id : null; h.time = R.time; h.evolved = R.evolved; h.enemies = R.enemies.length;
   }
+
+  // ------------------------------------------------------------ pause stats (SPEC-31 §2.5)
+  // NC.game.runStats() -> numbers only (UI formats/translates). crit/vamp 0..1, critDmg multiplier, speed multiplier,
+  // magnet px, dashCd s, regen = shield regen multiplier, dps = estimated sustained damage/s (weapon + companion + turret + cards)
+  G.runStats = () => {
+    const R = G.run; if (!R) return null;
+    const p = R.p, st = R.st, m = R.m, E = X.eff(), wd = R.wdef || {}, evo = !!R.evolved, wid = st.weapon.id;
+    const critF = 1 + E.crit * ((E.critMult || 2) - 1);
+    let shots = 1;
+    if (wid === 'laser') shots = Math.min(7, E.guns + (evo ? 1 : 0));
+    else if (wid === 'plasma') shots = Math.min(5, E.guns) * (1 + Math.min(3, E.pierce) * 0.35);
+    else if (wid === 'missile') shots = Math.min(8, E.guns + (evo ? 2 : 0)) * (evo ? 0.8 : 1) * 1.3;
+    else if (wid === 'rail') shots = Math.min(4, E.guns) * 1.5;
+    else if (wid === 'flame') shots = (1 + Math.floor((E.guns - 1) / 2)) * 1.5;
+    let dps = E.shot * E.rate * shots;
+    if (R.comp) dps += E.shot * (R.comp.frac || 2 / 3 * (1 + 0.03 * (R.comp.lvl - 1))) * E.rate * (R.comp.def.guns || 1);
+    if (R.tur) { const T = R.tur, d = T.def, lm = T.mult || 1 + 0.08 * (T.lvl - 1); dps += E.atk * d.dmg * lm * (T.id === 'beam' ? 1 : d.rate || 1); }
+    if (m.missile) dps += E.atk * 1.4 * m.missile / 2;
+    if (m.orbit) dps += E.atk * 0.7 * m.orbit * 0.6;
+    const cards = Object.keys(R.cards).filter(id => R.cards[id] > 0).map(id => { const c = cardList().find(x => x.id === id) || { id, max: 1 }; return { id, lvl: R.cards[id], max: c.max, r: cardR(c), special: !!c.special }; });
+    return {
+      hp: Math.max(0, Math.round(p.hp)), maxHp: R.maxHp, shd: Math.round(p.shd), maxShd: R.maxShd,
+      atk: Math.round(E.atk), dps: Math.round(dps * critF), crit: E.crit, critDmg: E.critMult || 2, vamp: m.vamp || 0,
+      speed: +(st.speed * m.speed).toFixed(2), magnet: Math.round(st.magnet * (1 + m.magnet)), dashCd: +(st.dashCd * m.dashCd).toFixed(2),
+      guns: E.guns, pierce: E.pierce, regen: +(st.regen * m.shdRegen).toFixed(2),
+      runLvl: R.runLvl, runXp: Math.floor(R.runXp), runNeed: R.runNeed, time: Math.floor(R.time), kills: R.kills, score: R.score, cards,
+    };
+  };
 
   // ------------------------------------------------------------ debug + headless simulation (SPEC §5)
   function bot() {

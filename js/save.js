@@ -9,6 +9,7 @@
   const defaultSettings = () => ({
     lang: null, ctrl: null, aim: null, hand: 'right', music: 0.55, sfx: 0.8, vibe: true, shake: true, dmgNum: true,
     quality: 'high', fps: false, joySize: 1, btnAlpha: 0.85, colorblind: false,
+    fpsCap: 60,            // 3.1 (SPEC-31 §2.10): 60 | 120; older saves get 60 through fill() + sanitize()
   });
   const defaultStats = () => ({
     runs: 0, kills: 0, bosses: 0, mbosses: 0, maxCombo: 0, playtime: 0, crEarned: 0, chests: 0, chestsOpened: 0, revives: 0,
@@ -69,6 +70,8 @@
     if (!Array.isArray(s.loadout)) s.loadout = [];
     s.loadout = s.loadout.filter(l => l && d.CONSUMABLES.some(c => c.id === l.id)).slice(0, d.CONS_MAX_TYPES);
     for (const k of Object.keys(s.stats)) s.stats[k] = num(s.stats[k]);
+    if (!s.settings || typeof s.settings !== 'object' || Array.isArray(s.settings)) s.settings = defaultSettings();
+    s.settings.fpsCap = +s.settings.fpsCap === 120 ? 120 : 60;
     return s;
   }
 

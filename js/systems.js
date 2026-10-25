@@ -1,5 +1,5 @@
 'use strict';
-// Neon Comet 3.0 - meta systems (SYSTEMS agent): economy, inventory, stats, missions, achievements, daily, offline.
+// Neon Comet 3.1 - meta systems (DATA agent): economy, inventory, stats, missions, achievements, daily, offline.
 // Every mutating call returns { ok:true, ... } or { ok:false, err:'<i18n key>' } and persists the save.
 (function (NC) {
   const D = () => NC.DATA;
@@ -303,7 +303,9 @@
     const critDmg = B.critDmg + m.critDmg;
     const speed = ship.mult.speed * (1 + m.speed + g.speed / 100);
     const dashCd = B.dashCd * Math.max(0.4, 1 + m.dashCd - g.dashCd / 100);
-    const regen = 1 + m.regen + g.ex_regen / 100 + (cdef && cdef.regenAura ? cdef.regenAura : 0);
+    // 3.1: regen = BASE.regen (0.5) x (1 + bonus), bonus (perk + sets + gear extras + guardian) capped at REGEN_BONUS_CAP
+    const regenBonus = m.regen + g.ex_regen / 100 + (cdef && cdef.regenAura ? cdef.regenAura : 0);
+    const regen = (B.regen != null ? B.regen : 1) * (1 + Math.min(d.REGEN_BONUS_CAP != null ? d.REGEN_BONUS_CAP : 99, regenBonus));
     const crMult = 1 + m.cr + g.cr / 100, xpMult = 1 + m.xp + g.xp / 100 + g.ex_xp / 100;
     const magnet = B.magnet + g.ex_magnet;
     const wDmg = 1 + d.WEAPON_UP.per * (wl - 1);
@@ -317,7 +319,7 @@
     const st = {
       shipId: ship.id, ship, shipLvl, shipMaxLvl: d.SHIP_UP.maxLvl(ship.r), lvl: acct.lvl,
       atk: Math.round(atk), hp: Math.round(hp), shd: Math.round(shd),
-      rate, crit, critDmg, speed, dashCd, regen, crMult, xpMult, magnet,
+      rate, crit, critDmg, speed, dashCd, regen, regenBonus, crMult, xpMult, magnet,
       flags: Object.assign({}, ship.perk.flags || {}), perk: ship.perk.id,
       weapon: { id: wdef.id, def: wdef, lvl: wl, dmgMult: wDmg },
       turret: tdef ? { id: tdef.id, def: tdef, lvl: tl, dmgMult: tMult } : null,

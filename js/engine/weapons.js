@@ -1,5 +1,5 @@
 'use strict';
-// Neon Comet 3.0 engine: player weapons (5 types + evolutions), companion, turret, card abilities (missiles, orbit blades),
+// Neon Comet 3.1 engine: player weapons (5 types + evolutions), companion, turret, card abilities (missiles, orbit blades),
 // player projectile simulation and collision. Shares internals through NC.eng (X).
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
@@ -252,7 +252,7 @@
   function compDef(id) { const d = Object.assign({}, W.COMPANIONS[id] || W.COMPANIONS.wing), D = NC.DATA && NC.DATA.COMPANIONS && NC.DATA.COMPANIONS.find(c => c.id === id); if (D) { d.guns = D.guns || 1; if (D.homing) d.homing = 4; if (D.pierce) d.pierce = 2; if (D.crit) d.crit = D.crit; } return d; }
   W.evolve = () => {
     const R = X.R; if (R.evolved) return; R.evolved = true;
-    U.ui('banner', 'banner.evolved', U.t('wpn.' + R.wdef.evo + '.name'));
+    U.ui('alert', 'evolved', { weapon: R.wdef.evo, base: R.st.weapon.id, nameKey: 'wpn.' + R.wdef.evo + '.name' });
     U.sfx('legendary'); F().ring(R.p.x, R.p.y, '#fee761', 60, 0.6); F().doFlash('#fee761', 0.3);
   };
 })(window.NC = window.NC || {});
