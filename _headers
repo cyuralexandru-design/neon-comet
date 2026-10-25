@@ -14,6 +14,12 @@
 /css/*
   Cache-Control: no-cache
 
+/assets/manifest.json
+  Cache-Control: no-cache
+
+/assets/sprites/*
+  Cache-Control: public, max-age=3600
+
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
 

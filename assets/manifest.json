@@ -1,0 +1,1952 @@
+{
+ "version": 1,
+ "sprites": {
+  "bg_asteroid_1": {
+   "file": "bg_asteroid_1.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_asteroid_2": {
+   "file": "bg_asteroid_2.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_asteroid_3": {
+   "file": "bg_asteroid_3.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_asteroid_4": {
+   "file": "bg_asteroid_4.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_ion_1": {
+   "file": "bg_ion_1.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_ion_2": {
+   "file": "bg_ion_2.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_ion_3": {
+   "file": "bg_ion_3.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_ion_4": {
+   "file": "bg_ion_4.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_nebula_1": {
+   "file": "bg_nebula_1.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_nebula_2": {
+   "file": "bg_nebula_2.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_nebula_3": {
+   "file": "bg_nebula_3.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_nebula_4": {
+   "file": "bg_nebula_4.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_station_1": {
+   "file": "bg_station_1.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_station_2": {
+   "file": "bg_station_2.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_station_3": {
+   "file": "bg_station_3.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_station_4": {
+   "file": "bg_station_4.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "boss_colos": {
+   "file": "boss_colos.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_colos_anim": {
+   "file": "boss_colos_anim.png",
+   "w": 112,
+   "h": 112,
+   "frames": 3,
+   "fps": 8,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_colos_dmg": {
+   "file": "boss_colos_dmg.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_imparat": {
+   "file": "boss_imparat.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_imparat_anim": {
+   "file": "boss_imparat_anim.png",
+   "w": 112,
+   "h": 112,
+   "frames": 3,
+   "fps": 8,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_imparat_dmg": {
+   "file": "boss_imparat_dmg.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_leviatan": {
+   "file": "boss_leviatan.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_leviatan_anim": {
+   "file": "boss_leviatan_anim.png",
+   "w": 112,
+   "h": 112,
+   "frames": 3,
+   "fps": 8,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_leviatan_dmg": {
+   "file": "boss_leviatan_dmg.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_nucleu": {
+   "file": "boss_nucleu.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_nucleu_anim": {
+   "file": "boss_nucleu_anim.png",
+   "w": 112,
+   "h": 112,
+   "frames": 3,
+   "fps": 8,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_nucleu_dmg": {
+   "file": "boss_nucleu_dmg.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_stup": {
+   "file": "boss_stup.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_stup_anim": {
+   "file": "boss_stup_anim.png",
+   "w": 112,
+   "h": 112,
+   "frames": 3,
+   "fps": 8,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_stup_dmg": {
+   "file": "boss_stup_dmg.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "card_bounce": {
+   "file": "card_bounce.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_crit": {
+   "file": "card_crit.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_dmg": {
+   "file": "card_dmg.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_flame": {
+   "file": "card_evo_flame.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_laser": {
+   "file": "card_evo_laser.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_missile": {
+   "file": "card_evo_missile.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_plasma": {
+   "file": "card_evo_plasma.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_rail": {
+   "file": "card_evo_rail.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_gun": {
+   "file": "card_gun.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_heal": {
+   "file": "card_heal.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_magnet": {
+   "file": "card_magnet.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_missile": {
+   "file": "card_missile.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_orbit": {
+   "file": "card_orbit.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_pierce": {
+   "file": "card_pierce.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_rate": {
+   "file": "card_rate.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_shield": {
+   "file": "card_shield.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_speed": {
+   "file": "card_speed.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_vamp": {
+   "file": "card_vamp.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "chest_0": {
+   "file": "chest_0.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "chest_1": {
+   "file": "chest_1.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "chest_2": {
+   "file": "chest_2.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "chest_3": {
+   "file": "chest_3.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "chest_4": {
+   "file": "chest_4.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "chest_open_0": {
+   "file": "chest_open_0.png",
+   "w": 48,
+   "h": 48,
+   "frames": 6,
+   "fps": 8,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "chest_open_1": {
+   "file": "chest_open_1.png",
+   "w": 48,
+   "h": 48,
+   "frames": 6,
+   "fps": 8,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "chest_open_2": {
+   "file": "chest_open_2.png",
+   "w": 48,
+   "h": 48,
+   "frames": 6,
+   "fps": 8,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "chest_open_3": {
+   "file": "chest_open_3.png",
+   "w": 48,
+   "h": 48,
+   "frames": 6,
+   "fps": 8,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "chest_open_4": {
+   "file": "chest_open_4.png",
+   "w": 48,
+   "h": 48,
+   "frames": 6,
+   "fps": 8,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "comp_guardian": {
+   "file": "comp_guardian.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "comp_orb": {
+   "file": "comp_orb.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "comp_phantom": {
+   "file": "comp_phantom.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "comp_wing": {
+   "file": "comp_wing.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "cons_magnet": {
+   "file": "cons_magnet.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "cons_mine": {
+   "file": "cons_mine.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "cons_repair": {
+   "file": "cons_repair.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "cons_shield": {
+   "file": "cons_shield.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "cons_x2": {
+   "file": "cons_x2.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "eb_beam": {
+   "file": "eb_beam.png",
+   "w": 6,
+   "h": 6,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "eb_big": {
+   "file": "eb_big.png",
+   "w": 10,
+   "h": 10,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    5,
+    5
+   ]
+  },
+  "eb_small": {
+   "file": "eb_small.png",
+   "w": 6,
+   "h": 6,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "en_artillery": {
+   "file": "en_artillery.png",
+   "w": 32,
+   "h": 32,
+   "frames": 2,
+   "fps": 6,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "en_bulwark": {
+   "file": "en_bulwark.png",
+   "w": 40,
+   "h": 40,
+   "frames": 2,
+   "fps": 6,
+   "anchor": [
+    20,
+    20
+   ]
+  },
+  "en_carrier": {
+   "file": "en_carrier.png",
+   "w": 40,
+   "h": 40,
+   "frames": 2,
+   "fps": 6,
+   "anchor": [
+    20,
+    20
+   ]
+  },
+  "en_charger": {
+   "file": "en_charger.png",
+   "w": 24,
+   "h": 24,
+   "frames": 3,
+   "fps": 6,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "en_dart": {
+   "file": "en_dart.png",
+   "w": 16,
+   "h": 16,
+   "frames": 2,
+   "fps": 8,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "en_drone": {
+   "file": "en_drone.png",
+   "w": 16,
+   "h": 16,
+   "frames": 4,
+   "fps": 12,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "en_gunner": {
+   "file": "en_gunner.png",
+   "w": 24,
+   "h": 24,
+   "frames": 2,
+   "fps": 8,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "en_hunter": {
+   "file": "en_hunter.png",
+   "w": 24,
+   "h": 24,
+   "frames": 2,
+   "fps": 8,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "en_mine": {
+   "file": "en_mine.png",
+   "w": 16,
+   "h": 16,
+   "frames": 4,
+   "fps": 6,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "en_mini": {
+   "file": "en_mini.png",
+   "w": 12,
+   "h": 12,
+   "frames": 2,
+   "fps": 8,
+   "anchor": [
+    6,
+    6
+   ]
+  },
+  "en_sentinel": {
+   "file": "en_sentinel.png",
+   "w": 32,
+   "h": 32,
+   "frames": 4,
+   "fps": 6,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "en_shard": {
+   "file": "en_shard.png",
+   "w": 16,
+   "h": 16,
+   "frames": 2,
+   "fps": 8,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "en_splitter": {
+   "file": "en_splitter.png",
+   "w": 32,
+   "h": 32,
+   "frames": 2,
+   "fps": 6,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "en_wraith": {
+   "file": "en_wraith.png",
+   "w": 24,
+   "h": 24,
+   "frames": 4,
+   "fps": 8,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "fx_explode_l": {
+   "file": "fx_explode_l.png",
+   "w": 64,
+   "h": 64,
+   "frames": 10,
+   "fps": 16,
+   "anchor": [
+    32,
+    32
+   ]
+  },
+  "fx_explode_m": {
+   "file": "fx_explode_m.png",
+   "w": 32,
+   "h": 32,
+   "frames": 8,
+   "fps": 16,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "fx_explode_s": {
+   "file": "fx_explode_s.png",
+   "w": 16,
+   "h": 16,
+   "frames": 6,
+   "fps": 16,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "fx_hit": {
+   "file": "fx_hit.png",
+   "w": 8,
+   "h": 8,
+   "frames": 4,
+   "fps": 20,
+   "anchor": [
+    4,
+    4
+   ]
+  },
+  "fx_shield": {
+   "file": "fx_shield.png",
+   "w": 40,
+   "h": 40,
+   "frames": 4,
+   "fps": 8,
+   "anchor": [
+    20,
+    20
+   ]
+  },
+  "fx_spark": {
+   "file": "fx_spark.png",
+   "w": 4,
+   "h": 4,
+   "frames": 4,
+   "fps": 20,
+   "anchor": [
+    2,
+    2
+   ]
+  },
+  "fx_thruster": {
+   "file": "fx_thruster.png",
+   "w": 8,
+   "h": 8,
+   "frames": 3,
+   "fps": 16,
+   "anchor": [
+    4,
+    0
+   ]
+  },
+  "fx_warp": {
+   "file": "fx_warp.png",
+   "w": 160,
+   "h": 90,
+   "frames": 6,
+   "fps": 12,
+   "anchor": [
+    80,
+    45
+   ]
+  },
+  "gear_armor_0": {
+   "file": "gear_armor_0.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_armor_1": {
+   "file": "gear_armor_1.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_armor_2": {
+   "file": "gear_armor_2.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_armor_3": {
+   "file": "gear_armor_3.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_armor_4": {
+   "file": "gear_armor_4.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_boost_0": {
+   "file": "gear_boost_0.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_boost_1": {
+   "file": "gear_boost_1.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_boost_2": {
+   "file": "gear_boost_2.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_boost_3": {
+   "file": "gear_boost_3.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_boost_4": {
+   "file": "gear_boost_4.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_core_0": {
+   "file": "gear_core_0.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_core_1": {
+   "file": "gear_core_1.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_core_2": {
+   "file": "gear_core_2.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_core_3": {
+   "file": "gear_core_3.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_core_4": {
+   "file": "gear_core_4.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_gen_0": {
+   "file": "gear_gen_0.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_gen_1": {
+   "file": "gear_gen_1.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_gen_2": {
+   "file": "gear_gen_2.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_gen_3": {
+   "file": "gear_gen_3.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "gear_gen_4": {
+   "file": "gear_gen_4.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "icon_comp_guardian": {
+   "file": "icon_comp_guardian.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "icon_comp_orb": {
+   "file": "icon_comp_orb.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "icon_comp_phantom": {
+   "file": "icon_comp_phantom.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "icon_comp_wing": {
+   "file": "icon_comp_wing.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "icon_tur_arc": {
+   "file": "icon_tur_arc.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "icon_tur_beam": {
+   "file": "icon_tur_beam.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "icon_tur_pulse": {
+   "file": "icon_tur_pulse.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "icon_tur_rocket": {
+   "file": "icon_tur_rocket.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "mboss_1": {
+   "file": "mboss_1.png",
+   "w": 48,
+   "h": 48,
+   "frames": 3,
+   "fps": 6,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "mboss_2": {
+   "file": "mboss_2.png",
+   "w": 48,
+   "h": 48,
+   "frames": 3,
+   "fps": 6,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "mboss_3": {
+   "file": "mboss_3.png",
+   "w": 48,
+   "h": 48,
+   "frames": 3,
+   "fps": 6,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "pk_crystal": {
+   "file": "pk_crystal.png",
+   "w": 10,
+   "h": 10,
+   "frames": 4,
+   "fps": 8,
+   "anchor": [
+    5,
+    5
+   ]
+  },
+  "pk_repair": {
+   "file": "pk_repair.png",
+   "w": 12,
+   "h": 12,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    6,
+    6
+   ]
+  },
+  "pk_star": {
+   "file": "pk_star.png",
+   "w": 12,
+   "h": 12,
+   "frames": 4,
+   "fps": 8,
+   "anchor": [
+    6,
+    6
+   ]
+  },
+  "pk_supernova": {
+   "file": "pk_supernova.png",
+   "w": 16,
+   "h": 16,
+   "frames": 4,
+   "fps": 8,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "proj_flame": {
+   "file": "proj_flame.png",
+   "w": 8,
+   "h": 8,
+   "frames": 3,
+   "fps": 12,
+   "anchor": [
+    4,
+    4
+   ]
+  },
+  "proj_flame_evo": {
+   "file": "proj_flame_evo.png",
+   "w": 10,
+   "h": 10,
+   "frames": 3,
+   "fps": 12,
+   "anchor": [
+    5,
+    5
+   ]
+  },
+  "proj_laser": {
+   "file": "proj_laser.png",
+   "w": 2,
+   "h": 6,
+   "frames": 1,
+   "fps": 12,
+   "anchor": [
+    1,
+    3
+   ]
+  },
+  "proj_laser_evo": {
+   "file": "proj_laser_evo.png",
+   "w": 4,
+   "h": 8,
+   "frames": 1,
+   "fps": 12,
+   "anchor": [
+    2,
+    4
+   ]
+  },
+  "proj_missile": {
+   "file": "proj_missile.png",
+   "w": 4,
+   "h": 8,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    2,
+    4
+   ]
+  },
+  "proj_missile_evo": {
+   "file": "proj_missile_evo.png",
+   "w": 4,
+   "h": 8,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    2,
+    4
+   ]
+  },
+  "proj_plasma": {
+   "file": "proj_plasma.png",
+   "w": 6,
+   "h": 6,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "proj_plasma_evo": {
+   "file": "proj_plasma_evo.png",
+   "w": 8,
+   "h": 8,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    4,
+    4
+   ]
+  },
+  "proj_rail": {
+   "file": "proj_rail.png",
+   "w": 3,
+   "h": 12,
+   "frames": 1,
+   "fps": 12,
+   "anchor": [
+    1,
+    6
+   ]
+  },
+  "proj_rail_evo": {
+   "file": "proj_rail_evo.png",
+   "w": 5,
+   "h": 14,
+   "frames": 1,
+   "fps": 12,
+   "anchor": [
+    2,
+    7
+   ]
+  },
+  "ship_aegis": {
+   "file": "ship_aegis.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_comet": {
+   "file": "ship_comet.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_dart": {
+   "file": "ship_dart.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_eclipse": {
+   "file": "ship_eclipse.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_falcon": {
+   "file": "ship_falcon.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_fregata": {
+   "file": "ship_fregata.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_imperial": {
+   "file": "ship_imperial.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_lynx": {
+   "file": "ship_lynx.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_nova": {
+   "file": "ship_nova.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_oblivion": {
+   "file": "ship_oblivion.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_phoenix": {
+   "file": "ship_phoenix.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_raptor": {
+   "file": "ship_raptor.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_scorpion": {
+   "file": "ship_scorpion.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_solaris": {
+   "file": "ship_solaris.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_specter": {
+   "file": "ship_specter.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_tempest": {
+   "file": "ship_tempest.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_umbra": {
+   "file": "ship_umbra.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_valkyrie": {
+   "file": "ship_valkyrie.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_vanator": {
+   "file": "ship_vanator.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "ship_vortex": {
+   "file": "ship_vortex.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "tur_arc": {
+   "file": "tur_arc.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "tur_beam": {
+   "file": "tur_beam.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "tur_pulse": {
+   "file": "tur_pulse.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "tur_rocket": {
+   "file": "tur_rocket.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "ui_crystal": {
+   "file": "ui_crystal.png",
+   "w": 10,
+   "h": 10,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    5,
+    5
+   ]
+  },
+  "ui_lock": {
+   "file": "ui_lock.png",
+   "w": 12,
+   "h": 12,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    6,
+    6
+   ]
+  },
+  "ui_logo": {
+   "file": "ui_logo.png",
+   "w": 200,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    100,
+    24
+   ]
+  },
+  "ui_pip_0": {
+   "file": "ui_pip_0.png",
+   "w": 7,
+   "h": 7,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "ui_pip_1": {
+   "file": "ui_pip_1.png",
+   "w": 7,
+   "h": 7,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "ui_pip_2": {
+   "file": "ui_pip_2.png",
+   "w": 7,
+   "h": 7,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "ui_pip_3": {
+   "file": "ui_pip_3.png",
+   "w": 7,
+   "h": 7,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "ui_pip_4": {
+   "file": "ui_pip_4.png",
+   "w": 7,
+   "h": 7,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "ui_rotate": {
+   "file": "ui_rotate.png",
+   "w": 64,
+   "h": 64,
+   "frames": 4,
+   "fps": 3,
+   "anchor": [
+    32,
+    32
+   ]
+  },
+  "ui_star": {
+   "file": "ui_star.png",
+   "w": 10,
+   "h": 10,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    5,
+    5
+   ]
+  },
+  "wpn_flame": {
+   "file": "wpn_flame.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "wpn_laser": {
+   "file": "wpn_laser.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "wpn_missile": {
+   "file": "wpn_missile.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "wpn_plasma": {
+   "file": "wpn_plasma.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "wpn_rail": {
+   "file": "wpn_rail.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  }
+ }
+}

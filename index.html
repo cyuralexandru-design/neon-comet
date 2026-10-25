@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Neon Comet</title>
-<meta name="description" content="Shooter arcade 2D în browser: pilotează nava, învinge boși, deschide cufere, upgradează-ți flota. Merge offline.">
-<meta name="theme-color" content="#05040d">
+<meta name="description" content="Shooter spatial pixel art in browser: piloteaza nava, invinge boss-i, deschide cufere, upgradeaza-ti flota. Merge offline.">
+<meta name="theme-color" content="#0b0f1e">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://neon-comet.pages.dev/">
 <meta property="og:title" content="Neon Comet">
-<meta property="og:description" content="Shooter arcade 2D în browser: boși, cufere, upgrade-uri. Merge offline, fără instalare.">
+<meta property="og:description" content="Shooter spatial pixel art: boss-i, cufere, upgrade-uri. Merge offline, fara instalare.">
 <meta property="og:image" content="https://neon-comet.pages.dev/icons/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -23,72 +23,43 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preload" href="fonts/Silkscreen-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/Micro5-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="stage">
   <canvas id="c"></canvas>
-
-  <!-- ============ HUD ============ -->
-  <div id="hud" hidden>
-    <div class="hud-top">
-      <div class="pilot">
-        <div class="bar hp"><i id="hHp"></i><span id="hHpT">100 / 100</span></div>
-        <div class="bar shd"><i id="hShd"></i><span id="hShdT">50</span></div>
-        <div class="chips">
-          <span class="chip atk" id="hAtk"></span>
-          <span class="chip sec" id="hSec"></span>
-        </div>
-      </div>
-      <div class="scorebox">
-        <div class="s" id="hScore">0</div>
-        <div class="c" id="hCombo"></div>
-        <div class="rxp"><i id="hRxp"></i></div>
-        <div class="rlv" id="hRlv">NIVEL RUNDĂ 1</div>
-      </div>
-      <div class="hud-right">
-        <div class="cr" id="hCr"></div>
-        <button class="hbtn" id="hPause" type="button" aria-label="Pauză"></button>
-      </div>
-    </div>
-    <div class="abil" id="hAbil">
-      <div class="ab dash" id="abDash"><div class="bar"><i id="abDashI"></i></div><span id="abDashK">DASH</span></div>
-      <div class="ab super" id="abSuper"><div class="bar"><i id="abSuperI"></i></div><span id="abSuperK">SUPER</span></div>
-    </div>
-  </div>
-  <div id="bossBar" hidden><div class="bn" id="bossName"></div><div class="bb"><i id="bossHp"></i></div></div>
-
-  <div id="touchUI" hidden>
-    <div id="joyZone"><div id="joy"><i id="knob"></i></div></div>
-    <div class="tbtns">
-      <button class="tb" id="btnSuper" type="button" aria-label="Super"><span>SUPER</span></button>
-      <button class="tb" id="btnDash" type="button" aria-label="Dash"><span>DASH</span></button>
-    </div>
-    <button class="hbtn" id="btnPauseT" type="button" aria-label="Pauză" hidden></button>
-    <div class="tip" id="tip">PUNE DEGETUL ȘI TRAGE CA SĂ ZBORI</div>
-  </div>
+  <div id="hud" hidden></div>
+  <div id="bossBar" hidden></div>
+  <div id="touchUI" hidden></div>
   <div id="fps" hidden></div>
-
-  <!-- ============ SCREENS ============ -->
-  <section class="screen" id="scrMenu" hidden></section>
-  <section class="screen" id="scrHangar" hidden></section>
-  <section class="screen" id="scrSettings" hidden></section>
-  <section class="screen" id="scrRecords" hidden></section>
-  <section class="screen" id="scrAccount" hidden></section>
-  <section class="screen clear" id="scrPause" hidden></section>
-  <section class="screen clear" id="scrCards" hidden></section>
-  <section class="screen clear" id="scrRevive" hidden></section>
-  <section class="screen" id="scrOver" hidden></section>
-  <section class="screen" id="scrExit" hidden></section>
-  <div class="modal" id="modal" hidden></div>
+  <div id="banner"></div>
+  <div id="screens"></div>
   <div id="toasts"></div>
 </div>
+<div id="rotate"><div class="ph"></div><div class="rt" data-i18n="rotate.title">Roteste telefonul</div><div class="rs" data-i18n="rotate.sub">Neon Comet se joaca pe orizontala</div></div>
 
+<script src="js/i18n.js"></script>
 <script src="js/data.js"></script>
-<script src="js/core.js"></script>
-<script src="js/game.js"></script>
-<script src="js/ui.js"></script>
+<script src="js/save.js"></script>
+<script src="js/systems.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/engine/assets.js"></script>
+<script src="js/engine/input.js"></script>
+<script src="js/engine/fx.js"></script>
+<script src="js/engine/weapons.js"></script>
+<script src="js/engine/enemies.js"></script>
+<script src="js/engine/bosses.js"></script>
+<script src="js/engine/render.js"></script>
+<script src="js/engine/game.js"></script>
+<script src="js/ui/hud.js"></script>
+<script src="js/ui/overlays.js"></script>
+<script src="js/ui/hangar.js"></script>
+<script src="js/ui/settings.js"></script>
+<script src="js/ui/menus.js"></script>
+<script src="js/ui/app.js"></script>
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
