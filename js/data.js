@@ -42,6 +42,20 @@
   D.rarityCol = r => (D.RARITY[r] || D.RARITY[0]).col;
 
   // =====================================================================
+  // 3.3 RARITY BY LEVEL (SPEC-33 C): every hangar item (ship, weapon, turret, companion, secondary, gear) goes to level 50.
+  // base rarity r = starting tier; tier = max(r, tierFromLevel(lvl)); lvl 1-9 Common, 10-19 Rare, 20-29 Epic, 30-39 Legendary,
+  // 40-50 Ultra. Each tier above the base gives +15% (tierMult) on top of the normal per-level bonus.
+  // Upgrade cost of lvl -> lvl+1 = base[r] * upCurve(lvl) (one curve for all kinds, ~x150 at lvl 49, sum to 50 ~ x1950).
+  // =====================================================================
+  D.MAX_LVL = 50;
+  D.TIER_STEP = 0.15;
+  D.tierFromLevel = l => Math.max(0, Math.min(4, Math.floor((l || 0) / 10)));
+  D.tierFor = (baseR, lvl) => Math.max(baseR | 0, D.tierFromLevel(lvl));
+  D.tierMult = (baseR, lvl) => 1 + D.TIER_STEP * (D.tierFor(baseR, lvl) - (baseR | 0));
+  D.nextTierLvl = (baseR, lvl) => { const t = D.tierFor(baseR, lvl); return t >= 4 ? null : (t + 1) * 10; }; // level that reaches the next tier
+  D.upCurve = l => (1 + 0.22 * (l - 1)) * Math.pow(1.055, l - 1);
+
+  // =====================================================================
   // PLAYER BASE + ACCOUNT LEVEL
   // =====================================================================
   // regen (3.1): base shield-regen multiplier returned by computeStats().regen (engine: maxShd * 0.2/s * regen after 2.6 s
@@ -56,12 +70,12 @@
   // 6.1 SHIPS
   // mult: base multipliers; perk.mods are applied by computeStats, perk.flags are for the engine.
   // =====================================================================
+  // 3.3: max 50 for every rarity; totals ~ 3.1 (r1 to 20 ~96k, r3 to 40 ~2.4M, r4 to 50 ~8.8M; r0 to 50 ~1M)
   D.SHIP_UP = {
     per: 0.04,                                  // +4% to multipliers per level
-    maxLvl: r => 10 + 10 * r,                   // 10/20/30/40/50
-    base: [500, 1500, 4000, 10000, 25000],      // cost of level 1->2 by rarity
-    growth: [1.15, 1.13, 1.11, 1.09, 1.08],
-    cost: (r, lvl) => Math.round(D.SHIP_UP.base[r] * Math.pow(D.SHIP_UP.growth[r], lvl - 1)),
+    maxLvl: () => D.MAX_LVL,
+    base: [500, 900, 1600, 2800, 4500],         // cost of level 1->2 by base rarity
+    cost: (r, lvl) => Math.round(D.SHIP_UP.base[r] * D.upCurve(lvl)),
   };
   const ship = (id, r, price, hp, atk, shd, rate, speed, perk) => ({
     id, r, price, nameKey: 'ship.' + id + '.name', perkKey: 'ship.' + id + '.perk', sprite: 'ship_' + id,
@@ -95,10 +109,16 @@
   // power = effective dps factor used for the power rating (accounts for pierce/aoe/cone).
   // =====================================================================
   D.WEAPON_UP = {
-    per: 0.05, maxLvl: 30,
-    base: [600, 1500, 3500, 8000, 18000], growth: 1.15,
-    cost: (r, lvl) => Math.round(D.WEAPON_UP.base[r] * Math.pow(D.WEAPON_UP.growth, lvl - 1)),
+    per: 0.05, maxLvl: 50,                       // 3.3: 30 -> 50
+    base: [600, 1000, 1600, 2600, 4000],
+    cost: (r, lvl) => Math.round(D.WEAPON_UP.base[r] * D.upCurve(lvl)),
   };
+  // 3.3: 11 weapons. Fields read by the engine: dmg (x ship atk per projectile), rate (shots or bursts /s), speed, pierce,
+  // plus per-weapon behaviour fields (burst, pellets, cone, chain, beam, ramp, orbit...). power = dps factor for the rating
+  // (~5 at r0, ~6.5-7 at r1, ~7.5-8 at r2, ~9-9.5 at r3).
+  // skill (SPEC-33 B): automatic special. every = seconds between triggers, everyShots = every Nth shot/burst, power =
+  // damage as a multiple of one normal shot of the weapon (unless noted), dur = seconds. Values at weapon level 1:
+  // use D.skillAt(weapon, lvl) for the scaled values (power +2%/lvl, every -0.4%/lvl, threshold +0.1%/lvl, count +1 per 10 lvl).
   D.WEAPONS = [
     { id: 'laser', r: 0, price: 0, dmg: 1.0, rate: 5.0, speed: 420, pierce: 0, power: 5.0, sfx: 'shoot_laser',
       evo: { id: 'prism', split: 3, splitDmg: 0.5 } },
@@ -110,13 +130,64 @@
       evo: { id: 'swarm', count: 3 } },
     { id: 'rail', r: 3, price: 45000, dmg: 6.0, rate: 0.7, speed: 900, charge: 0.6, pierce: 99, power: 9.0, sfx: 'shoot_rail',
       evo: { id: 'annihilator', chain: 3, chainDmg: 0.6 } },
+    // ---- 3.3 new weapons
+    // blaster: rate = bursts/s, burst bolts each (gap s between bolts) -> 6.6 bolts/s x 0.75
+    { id: 'blaster', r: 0, price: 3500, dmg: 0.75, rate: 2.2, burst: 3, burstGap: 0.07, speed: 520, pierce: 0, power: 5.4, sfx: 'shoot_laser',
+      evo: { id: 'repeater', burst: 5, dmgMult: 1.1 } },
+    // shotgun: pellets per shot (random pelletsMin..pellets), cone = total spread rad, range = px before pellets fade
+    { id: 'shotgun', r: 1, price: 12000, dmg: 0.6, rate: 1.7, pellets: 7, pelletsMin: 5, cone: 0.6, range: 140, speed: 380, pierce: 0, power: 6.8, sfx: 'shoot_plasma',
+      evo: { id: 'hailstorm', pellets: 10, pelletsMin: 8, cone: 0.85, pierce: 1 } },
+    // arc: instant lightning to the nearest enemy in range, then jumps chain times (each jump chainDmg x) within chainR px
+    { id: 'arc', r: 1, price: 14000, dmg: 1.1, rate: 2.4, range: 170, chain: 3, chainDmg: 0.7, chainR: 90, speed: 0, pierce: 0, power: 7.0, sfx: 'shoot_rail',
+      evo: { id: 'thunder', chain: 6, chainDmg: 0.85 } },
+    // wave: crescent that grows from width w0 to w1 px over its life and pierces everything (hits each enemy once)
+    { id: 'wave', r: 2, price: 24000, dmg: 2.4, rate: 0.9, speed: 150, w0: 24, w1: 90, life: 1.6, pierce: 99, power: 7.8, sfx: 'shoot_plasma',
+      evo: { id: 'tsunami', w1: 140, dmgMult: 1.3, life: 2.0 } },
+    // drill: continuous beam (rate = damage ticks/s, dmg per tick), range px; damage ramps up to rampMax x after ramp s on the same target
+    { id: 'drill', r: 3, price: 50000, dmg: 0.32, rate: 10, beam: true, range: 180, ramp: 1.5, rampMax: 3, speed: 0, pierce: 0, power: 9.2, sfx: 'shoot_rail',
+      evo: { id: 'void_lance', rampMax: 5, width: 2 } },
+    // swarmer: nanites orbit the ship for orbit s, then home in (homing turn rate) - rate = nanites/s
+    { id: 'swarmer', r: 3, price: 55000, dmg: 0.9, rate: 6, speed: 240, orbit: 0.6, homing: 6, pierce: 0, power: 9.4, sfx: 'shoot_missile',
+      evo: { id: 'hivemind', count: 2 } },
   ];
+  const SKILLS = {
+    laser: { id: 'overcharge', every: 8, dur: 1, power: 6, width: 14 },            // thick piercing beam, power = x shot per second
+    plasma: { id: 'singularity', everyShots: 10, dur: 2, radius: 60, pull: 120, power: 0.5 }, // mini black hole, power = x shot per second inside
+    flame: { id: 'firestorm', every: 9, radius: 80, power: 3, dot: { dps: 0.8, dur: 2 } },    // fire ring around the ship (one hit + burn)
+    missile: { id: 'barrage', every: 7, count: 6, power: 1 },                     // count missiles at once, each power x shot
+    rail: { id: 'execution', threshold: 0.15, boss: false },                       // passive: hit kills a non-boss under threshold hp
+    blaster: { id: 'rapid', every: 6, dur: 2, power: 3 },                          // power = fire-rate multiplier for dur
+    shotgun: { id: 'knockback', every: 8, radius: 90, push: 220, power: 4 },       // point-blank blast, push px/s impulse
+    arc: { id: 'storm', every: 9, count: 6, power: 3 },                            // lightning on count random enemies on screen
+    wave: { id: 'echo', everyShots: 3, count: 3, spread: 0.5, power: 0.7 },        // that wave splits in count (spread rad), each power x
+    drill: { id: 'overheat', after: 2, radius: 50, power: 8 },                     // after s on the same target: explosion (aoe radius)
+    swarmer: { id: 'hive', every: 10, count: 10, power: 1 },                       // count extra nanites
+  };
+  for (const w of D.WEAPONS) { w.skill = Object.assign({ nameKey: 'wpn.' + w.id + '.skill.name', descKey: 'wpn.' + w.id + '.skill.desc' }, SKILLS[w.id]); }
+  // scaled skill for a weapon level (pure). Returns a copy; engine may use it or the raw def.skill.
+  D.skillAt = (w, lvl) => {
+    if (typeof w === 'string') w = D.WEAPONS.find(x => x.id === w);
+    if (!w || !w.skill) return null;
+    const k = Math.max(1, lvl || 1) - 1, s = JSON.parse(JSON.stringify(w.skill));
+    if (s.power != null) s.power = +(s.power * (1 + 0.02 * k)).toFixed(3);
+    if (s.every != null) s.every = +(s.every * (1 - 0.004 * k)).toFixed(2);
+    if (s.threshold != null) s.threshold = +(s.threshold + 0.001 * k).toFixed(3);
+    if (s.count != null) s.count += Math.floor(k / 10);
+    return s;
+  };
+  // i18n vars for wpn.<id>.skill.desc: {t} seconds, {n} shots/count, {p} power % or x, {d} duration, {h} hp threshold %
+  D.skillVars = (w, lvl) => {
+    const s = D.skillAt(w, lvl); if (!s) return {};
+    return { t: s.every != null ? s.every.toFixed(1) : s.after != null ? s.after : '', n: s.everyShots || s.count || '', p: s.power != null ? Math.round(s.power * 100) : '',
+      x: s.power != null ? s.power.toFixed(1) : '', d: s.dur != null ? s.dur : '', h: s.threshold != null ? (s.threshold * 100).toFixed(1) : '' };
+  };
   for (const w of D.WEAPONS) { w.nameKey = 'wpn.' + w.id + '.name'; w.descKey = 'wpn.' + w.id + '.desc'; w.sprite = 'wpn_' + w.id; w.proj = 'proj_' + w.id; w.evo.nameKey = 'wpn.' + w.evo.id + '.name'; w.evo.proj = 'proj_' + w.id + '_evo'; w.evo.card = 'evo_' + w.id; }
 
   // =====================================================================
   // 6.3 TURRETS & COMPANIONS
   // =====================================================================
-  D.TURRET_UP = { per: 0.08, maxLvl: 20, costFrac: 0.25, growth: 1.18 };
+  // 3.3: max 50; cost = base[r] * upCurve(lvl) (r3 to 20 ~374k like 3.1, to 50 ~6.8M)
+  D.TURRET_UP = { per: 0.08, maxLvl: 50, base: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => Math.round(D.TURRET_UP.base[r] * D.upCurve(lvl)) };
   D.TURRETS = [
     { id: 'pulse', r: 0, price: 3000, count: 1, dmg: 0.35, rate: 2.5, kind: 'laser', power: 0.9 },
     { id: 'rocket', r: 1, price: 9000, count: 1, dmg: 1.0, rate: 0.8, kind: 'missile', aoe: 20, power: 1.4 },
@@ -124,7 +195,7 @@
     { id: 'beam', r: 3, price: 40000, count: 1, dmg: 0.25, rate: 10, kind: 'beam', power: 3.0 },
   ];
   for (const t of D.TURRETS) { t.nameKey = 'tur.' + t.id + '.name'; t.descKey = 'tur.' + t.id + '.desc'; t.sprite = 'tur_' + t.id; t.icon = 'icon_tur_' + t.id; }
-  D.COMP_UP = { base: 2 / 3, per: 0.03, maxLvl: 20, costFrac: 0.25, growth: 1.18 }; // dmg frac = 2/3 * (1 + 3%*(lvl-1))
+  D.COMP_UP = { base: 2 / 3, per: 0.03, maxLvl: 50, costBase: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => Math.round(D.COMP_UP.costBase[r] * D.upCurve(lvl)) }; // dmg frac = 2/3 * (1 + 3%*(lvl-1)) * tierMult
   D.COMPANIONS = [
     { id: 'wing', r: 0, price: 4000, guns: 1 },
     { id: 'orb', r: 1, price: 12000, guns: 1, homing: true },
@@ -132,6 +203,22 @@
     { id: 'phantom', r: 3, price: 50000, guns: 1, pierce: true, crit: 0.15 },
   ];
   for (const c of D.COMPANIONS) { c.nameKey = 'comp.' + c.id + '.name'; c.descKey = 'comp.' + c.id + '.desc'; c.sprite = 'comp_' + c.id; c.icon = 'icon_comp_' + c.id; }
+
+  // =====================================================================
+  // 3.3 SECONDARY WEAPONS (SPEC-33 D): auto-fire on their own cooldown next to the primary. One equipped (S.secondary.eq).
+  // dmg = x ship atk per hit, cd = seconds between activations, power = dps factor (x atk) for the rating.
+  // computeStats().secondary = { id, lvl, mult, def } (mult = level bonus x tier bonus, multiply dmg by it).
+  // =====================================================================
+  D.SEC_UP = { per: 0.08, maxLvl: 50, base: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => Math.round(D.SEC_UP.base[r] * D.upCurve(lvl)) };
+  D.SECONDARY = [
+    { id: 'homing', r: 0, price: 5000, dmg: 1.2, cd: 2, count: 2, speed: 180, homing: 4, aoe: 14, power: 1.3 },        // 2 homing micro-missiles
+    { id: 'mines', r: 0, price: 6000, dmg: 3.0, cd: 3, count: 1, aoe: 34, life: 8, trigger: 26, power: 1.2 },          // mine dropped behind the ship
+    { id: 'tesla', r: 1, price: 14000, dmg: 1.6, cd: 1.2, count: 1, range: 150, power: 1.7 },                          // zaps the nearest enemy
+    { id: 'blade', r: 2, price: 28000, dmg: 0.55, cd: 0.4, count: 2, radius: 46, spin: 3.2, power: 2.4 },              // 2 orbiting blades, cd = re-hit time per enemy
+    { id: 'nova', r: 3, price: 50000, dmg: 4.0, cd: 6, count: 1, radius: 120, push: 120, power: 3.0 },                 // radial shock pulse
+    { id: 'drone', r: 3, price: 60000, dmg: 0.6, cd: 0.33, count: 1, range: 200, speed: 420, power: 3.2 },             // gunship drone firing lasers
+  ];
+  for (const x of D.SECONDARY) { x.nameKey = 'sec.' + x.id + '.name'; x.descKey = 'sec.' + x.id + '.desc'; x.icon = 'sec_' + x.id; x.sprite = 'sec_' + x.id; }
 
   // =====================================================================
   // 6.4 GEAR
@@ -145,8 +232,8 @@
   ];
   D.GEAR = {
     lvlPer: 0.12,
-    maxLvl: r => 5 * (r + 1),
-    upCost: (r, lvl) => Math.round(150 * D.RARITY[r].mult * Math.pow(1.3 - 0.025 * r, lvl - 1)), // flatter growth for long rarity ladders
+    maxLvl: () => D.MAX_LVL,                     // 3.3: 5*(r+1) -> 50 for every rarity (tier follows the level)
+    upCost: (r, lvl) => Math.round(150 * D.RARITY[r].mult * D.upCurve(lvl)), // r = base rarity; lvl 1-5 ~ 3.1 costs
     sellValue: (r, lvl) => Math.round(200 * D.RARITY[r].mult * (1 + 0.3 * (lvl - 1))), // 5x v2
     extrasByRarity: [0, 1, 1, 2, 3],
     setChance: [0, 0.15, 0.30, 0.50, 0.70],

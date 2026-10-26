@@ -606,8 +606,30 @@
     24
    ]
   },
+  "card_evo_arc": {
+   "file": "card_evo_arc.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
   "card_evo_blaster": {
    "file": "card_evo_blaster.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_drill": {
+   "file": "card_evo_drill.png",
    "w": 56,
    "h": 48,
    "frames": 1,
@@ -663,6 +685,39 @@
   },
   "card_evo_rail": {
    "file": "card_evo_rail.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_shotgun": {
+   "file": "card_evo_shotgun.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_swarmer": {
+   "file": "card_evo_swarmer.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_evo_wave": {
+   "file": "card_evo_wave.png",
    "w": 56,
    "h": 48,
    "frames": 1,
@@ -1673,6 +1728,50 @@
     20
    ]
   },
+  "fx_skill_beam": {
+   "file": "fx_skill_beam.png",
+   "w": 16,
+   "h": 16,
+   "frames": 3,
+   "fps": 15,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "fx_skill_ring": {
+   "file": "fx_skill_ring.png",
+   "w": 64,
+   "h": 64,
+   "frames": 6,
+   "fps": 14,
+   "anchor": [
+    32,
+    32
+   ]
+  },
+  "fx_skill_singularity": {
+   "file": "fx_skill_singularity.png",
+   "w": 32,
+   "h": 32,
+   "frames": 6,
+   "fps": 10,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "fx_skill_strike": {
+   "file": "fx_skill_strike.png",
+   "w": 16,
+   "h": 48,
+   "frames": 5,
+   "fps": 16,
+   "anchor": [
+    8,
+    43
+   ]
+  },
   "fx_spark": {
    "file": "fx_spark.png",
    "w": 4,
@@ -2135,6 +2234,39 @@
     3
    ]
   },
+  "proj_arc": {
+   "file": "proj_arc.png",
+   "w": 6,
+   "h": 8,
+   "frames": 3,
+   "fps": 18,
+   "anchor": [
+    3,
+    4
+   ]
+  },
+  "proj_arc_evo": {
+   "file": "proj_arc_evo.png",
+   "w": 8,
+   "h": 8,
+   "frames": 3,
+   "fps": 18,
+   "anchor": [
+    4,
+    4
+   ]
+  },
+  "proj_arc_hit": {
+   "file": "proj_arc_hit.png",
+   "w": 10,
+   "h": 10,
+   "frames": 4,
+   "fps": 20,
+   "anchor": [
+    5,
+    5
+   ]
+  },
   "proj_blaster": {
    "file": "proj_blaster.png",
    "w": 3,
@@ -2155,6 +2287,39 @@
    "anchor": [
     3,
     4
+   ]
+  },
+  "proj_drill": {
+   "file": "proj_drill.png",
+   "w": 6,
+   "h": 8,
+   "frames": 3,
+   "fps": 15,
+   "anchor": [
+    3,
+    4
+   ]
+  },
+  "proj_drill_evo": {
+   "file": "proj_drill_evo.png",
+   "w": 10,
+   "h": 8,
+   "frames": 3,
+   "fps": 15,
+   "anchor": [
+    5,
+    4
+   ]
+  },
+  "proj_drill_hit": {
+   "file": "proj_drill_hit.png",
+   "w": 12,
+   "h": 12,
+   "frames": 4,
+   "fps": 16,
+   "anchor": [
+    6,
+    6
    ]
   },
   "proj_flame": {
@@ -2265,6 +2430,182 @@
    "anchor": [
     2,
     7
+   ]
+  },
+  "proj_shotgun": {
+   "file": "proj_shotgun.png",
+   "w": 3,
+   "h": 3,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    1,
+    1
+   ]
+  },
+  "proj_shotgun_evo": {
+   "file": "proj_shotgun_evo.png",
+   "w": 4,
+   "h": 5,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    2,
+    2
+   ]
+  },
+  "proj_swarmer": {
+   "file": "proj_swarmer.png",
+   "w": 3,
+   "h": 3,
+   "frames": 2,
+   "fps": 10,
+   "anchor": [
+    1,
+    1
+   ]
+  },
+  "proj_swarmer_evo": {
+   "file": "proj_swarmer_evo.png",
+   "w": 4,
+   "h": 4,
+   "frames": 2,
+   "fps": 10,
+   "anchor": [
+    2,
+    2
+   ]
+  },
+  "proj_wave": {
+   "file": "proj_wave.png",
+   "w": 16,
+   "h": 6,
+   "frames": 2,
+   "fps": 8,
+   "anchor": [
+    8,
+    3
+   ]
+  },
+  "proj_wave_evo": {
+   "file": "proj_wave_evo.png",
+   "w": 22,
+   "h": 8,
+   "frames": 2,
+   "fps": 8,
+   "anchor": [
+    11,
+    4
+   ]
+  },
+  "sec_blade": {
+   "file": "sec_blade.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "sec_blade_obj": {
+   "file": "sec_blade_obj.png",
+   "w": 16,
+   "h": 16,
+   "frames": 4,
+   "fps": 16,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "sec_drone": {
+   "file": "sec_drone.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "sec_drone_obj": {
+   "file": "sec_drone_obj.png",
+   "w": 16,
+   "h": 16,
+   "frames": 2,
+   "fps": 8,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "sec_homing": {
+   "file": "sec_homing.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "sec_homing_proj": {
+   "file": "sec_homing_proj.png",
+   "w": 16,
+   "h": 16,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "sec_mine": {
+   "file": "sec_mine.png",
+   "w": 16,
+   "h": 16,
+   "frames": 4,
+   "fps": 4,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "sec_mines": {
+   "file": "sec_mines.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "sec_nova": {
+   "file": "sec_nova.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "sec_tesla": {
+   "file": "sec_tesla.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
    ]
   },
   "ship_aegis": {
@@ -2806,6 +3147,17 @@
     8
    ]
   },
+  "ui_tab_secondary": {
+   "file": "ui_tab_secondary.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
   "ui_tab_ships": {
    "file": "ui_tab_ships.png",
    "w": 16,
@@ -2916,8 +3268,30 @@
     16
    ]
   },
+  "wpn_arc": {
+   "file": "wpn_arc.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
   "wpn_blaster": {
    "file": "wpn_blaster.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "wpn_drill": {
+   "file": "wpn_drill.png",
    "w": 24,
    "h": 24,
    "frames": 1,
@@ -2973,6 +3347,39 @@
   },
   "wpn_rail": {
    "file": "wpn_rail.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "wpn_shotgun": {
+   "file": "wpn_shotgun.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "wpn_swarmer": {
+   "file": "wpn_swarmer.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "wpn_wave": {
+   "file": "wpn_wave.png",
    "w": 24,
    "h": 24,
    "frames": 1,

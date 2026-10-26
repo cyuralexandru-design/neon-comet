@@ -30,18 +30,29 @@
     { id: 'weapons', kind: 'weapon', key: 'hangar.tab.weapons', icon: 'wpn_laser' },
     { id: 'turrets', kind: 'turret', key: 'hangar.tab.turrets', icon: 'icon_tur_pulse' },
     { id: 'comps', kind: 'comp', key: 'hangar.tab.comps', icon: 'icon_comp_wing' },
+    { id: 'secondary', kind: 'secondary', key: 'hangar.tab.secondary', icon: 'ui_tab_secondary', alt: 'sec_homing' },
     { id: 'gear', key: 'hangar.tab.gear', icon: 'gear_armor_3' },
     { id: 'cons', key: 'hangar.tab.cons', icon: 'cons_mine' },
     { id: 'chests', key: 'hangar.tab.chests', icon: 'chest_3' },
   ];
   const CHIP_ICON = { armor: 'gear_armor_3', gen: 'gear_gen_2', core: 'gear_core_3', boost: 'gear_boost_3' };
-  const LISTS = { ship: 'SHIPS', weapon: 'WEAPONS', turret: 'TURRETS', comp: 'COMPANIONS' };
-  const BUCKET = { ship: 'ships', weapon: 'weapons', turret: 'turrets', comp: 'comps' };
-  const spriteOf = (kind, id) => kind === 'ship' ? 'ship_' + id : kind === 'weapon' ? 'wpn_' + id : kind === 'turret' ? 'icon_tur_' + id : kind === 'comp' ? 'icon_comp_' + id : kind;
+  const LISTS = { ship: 'SHIPS', weapon: 'WEAPONS', turret: 'TURRETS', comp: 'COMPANIONS', secondary: 'SECONDARY' };
+  const BUCKET = { ship: 'ships', weapon: 'weapons', turret: 'turrets', comp: 'comps', secondary: 'secondary' };
+  const spriteOf = (kind, id) => kind === 'ship' ? 'ship_' + id : kind === 'weapon' ? 'wpn_' + id : kind === 'turret' ? 'icon_tur_' + id : kind === 'comp' ? 'icon_comp_' + id : kind === 'secondary' ? 'sec_' + id : kind;
   UI.spriteOf = spriteOf;
-  const gearSprite = it => 'gear_' + it.slot + '_' + it.r;
+  // 3.3 rarity by level: frames/bands/names use the CURRENT tier (NC.sys.tierOf); fallback = base rarity
+  const tierOf = (kind, x, lvl) => { try { if (sys().tierOf) return sys().tierOf(kind, x, lvl); } catch (e) {} return (typeof x === 'object' && x ? x.r : (sys().def(kind, x) || {}).r) || 0; };
+  const gtier = it => tierOf('gear', it);
+  const gearSprite = it => 'gear_' + it.slot + '_' + gtier(it);
+  const OPTIONAL = { turret: 1, comp: 1, secondary: 1 };
   const defs = kind => D()[LISTS[kind]] || [];
   const eqOf = kind => (St()[BUCKET[kind]] || {}).eq;
+  // "Nv 23 · Epic → Legendary at Nv 30"
+  function tierLine(kind, x, lvl) {
+    const tr = tierOf(kind, x, lvl);
+    if (!lvl) return t('hangar.tierShop', { r: rname(tr), m: (sys().maxLevel && sys().maxLevel(kind)) || 50 });
+    return tr >= 4 ? t('hangar.tierMax', { n: lvl, r: rname(tr) }) : t('hangar.tierNext', { n: lvl, r: rname(tr), r2: rname(tr + 1), a: (tr + 1) * 10 });
+  }
   const SLOTS = () => (D().GEAR_SLOTS || []).map(s => s.id);
   const slotIdx = it => SLOTS().indexOf(it.slot);
   const mainKey = slot => { const s = (D().GEAR_SLOTS || []).find(x => x.id === slot); return s ? s.main : 'hp'; };
@@ -82,14 +93,14 @@
     sfx('merge'); buzz(30);
     if (s) { s.state.mode = null; s.state.picked = []; }
     redraw();
-    const items = made.map(id => sys().item(id)).filter(Boolean).sort((a, b) => b.r - a.r || slotIdx(a) - slotIdx(b) || b.lvl - a.lvl);
+    const items = made.map(id => sys().item(id)).filter(Boolean).sort((a, b) => gtier(b) - gtier(a) || slotIdx(a) - slotIdx(b) || b.lvl - a.lvl);
     mergeSummary(n, items);
   }
   function mergeSummary(n, items) {
     prepPop();
     const m = UI.modal(`<div class="ha-pop ha-sum ha-c">
       <div class="ha-ph"><b>${t('hangar.mergeSumT')}</b><span>${esc(t('hangar.mergeSumS', { n }))}</span></div>
-      <div class="ha-sumg">${items.map(it => `<div class="ha-sumc">${tile(it.r, img(gearSprite(it)), { lvl: it.lvl, set: it.set })}<span class="ha-cap hac${it.r}" data-fit2="8">${esc(t(it.nameKey))}</span></div>`).join('')}</div>
+      <div class="ha-sumg">${items.map(it => `<div class="ha-sumc">${tile(gtier(it), img(gearSprite(it)), { lvl: it.lvl, set: it.set })}<span class="ha-cap hac${gtier(it)}" data-fit2="8">${esc(t(it.nameKey))}</span></div>`).join('')}</div>
       <div class="ha-pa"><span class="ha-note">${t('hangar.mergeHint')}</span><button class="ha-b pri ha-c" data-f data-first data-a="close">${t('hangar.ok')}</button></div></div>`,
     { on: a => { if (a === 'close') UI.closeModal(m); } });
     m.classList.add('ha-modal'); fitAll(m);
@@ -234,23 +245,23 @@
     const S = St(), cs = sys().computeStats();
     const stats = [['atk', cs.atk], ['hp', cs.hp], ['shd', cs.shd], ['dps', cs.dps]]
       .map(([k, v]) => `<div class="ha-st ${k} ha-c"><small data-fit="8">${t('hangar.st.' + k)}</small><b>${fmt(v)}</b></div>`).join('');
-    const kindSlot = (kind, emptyIco) => { const id = eqOf(kind), d = id && sys().def(kind, id); return d ? { r: d.r, sprite: spriteOf(kind, id), lvl: sys().level(kind, id), up: canUp(kind, id), tag: kind === 'weapon' ? weaponTag(d) : '' } : { empty: emptyIco }; };
-    const gearSlot = slot => { const id = S.gear.eq[slot], it = id && sys().item(id); return it ? { r: it.r, sprite: gearSprite(it), lvl: it.lvl, up: canUpGear(it), set: it.set } : { empty: 'gear_' + slot + '_1' }; };
+    const kindSlot = (kind, emptyIco) => { const id = eqOf(kind), d = id && sys().def(kind, id); return d ? { r: tierOf(kind, d), sprite: spriteOf(kind, id), lvl: sys().level(kind, id), up: canUp(kind, id), tag: kind === 'weapon' ? weaponTag(d) : '' } : { empty: emptyIco }; };
+    const gearSlot = slot => { const id = S.gear.eq[slot], it = id && sys().item(id); return it ? { r: gtier(it), sprite: gearSprite(it), lvl: it.lvl, up: canUpGear(it), set: it.set } : { empty: 'gear_' + slot + '_1' }; };
     const slot = (key, x) => `<div class="ha-slot" data-f data-a="slot" data-id="${key}" data-k="slot-${key}" aria-label="${esc(t('hangar.slot.' + key))}">${x.empty ? tile(0, img(x.empty), { empty: true }) : tile(x.r, img(x.sprite), { lvl: x.lvl, up: x.up, set: x.set, tag: x.tag })}</div>`;
     const ship = S.ships.eq, sd = sys().def('ship', ship) || { r: 0, nameKey: ship };
-    const sl = sys().level('ship', ship) || 1, sup = sys().price('ship', ship, sl);
+    const sl = sys().level('ship', ship) || 1, sup = sys().price('ship', ship, sl), str = tierOf('ship', sd, sl);
     const nCh = sum(S.chests), nM = mergeCount();
     const up = sup == null ? `<button class="ha-b pri ha-c off" data-f data-a="shipUp" data-k="ha-shipup">${t('hangar.shipMax')}</button>`
       : `<button class="ha-b pri ha-c${cry() < sup ? ' poor' : ''}" data-f data-a="shipUp" data-k="ha-shipup">${t('hangar.upShip')} ${gem()}${fmt(sup)}</button>`;
     return `<div class="ha-left">
       <div class="ha-stats">${stats}</div>
       <div class="ha-stage">
-        <div class="ha-col">${slot('weapon', kindSlot('weapon', 'wpn_laser'))}${slot('turret', kindSlot('turret', 'icon_tur_pulse'))}${slot('comp', kindSlot('comp', 'icon_comp_wing'))}${slot('boost', gearSlot('boost'))}</div>
+        <div class="ha-col">${slot('weapon', kindSlot('weapon', 'wpn_laser'))}${slot('turret', kindSlot('turret', 'icon_tur_pulse'))}${slot('comp', kindSlot('comp', 'icon_comp_wing'))}${slot('secondary', kindSlot('secondary', 'sec_homing'))}</div>
         <div class="ha-center">
-          <div class="ha-name"><b data-fit="11">${esc(t(sd.nameKey))}</b><small class="hac${sd.r}" data-fit="9">${esc(t('hangar.shipLine', { n: sl, r: rname(sd.r) }))}</small></div>
+          <div class="ha-name"><b data-fit="11">${esc(t(sd.nameKey))}</b><small class="hac${str}" data-fit="9">${esc(t('hangar.shipLine', { n: sl, r: rname(str) }))}</small></div>
           <div class="ha-ship" data-f data-a="slot" data-id="ship" data-k="slot-ship" aria-label="${esc(t('hangar.slot.ship'))}"><i class="ha-ring2"></i><i class="ha-ring"></i>${img('ship_' + ship, 'ship')}</div>
         </div>
-        <div class="ha-col">${slot('armor', gearSlot('armor'))}${slot('gen', gearSlot('gen'))}${slot('core', gearSlot('core'))}</div>
+        <div class="ha-col">${slot('armor', gearSlot('armor'))}${slot('gen', gearSlot('gen'))}${slot('core', gearSlot('core'))}${slot('boost', gearSlot('boost'))}</div>
       </div>
       <div class="ha-acts">${up}
         
@@ -265,8 +276,12 @@
       <div class="ha-rh"><b data-fit="10">${t(tb.key)}</b><span class="cnt">${p.count}</span><div class="ha-chips">${p.chips || ''}</div></div>
       <div class="ha-sub">${p.sub || ''}</div>
       <div class="ha-list" data-tab="${st.tab}">${p.list}</div>
-      <div class="ha-tabs" role="tablist">${TABS.map(x => `<button class="ha-itab${x.id === st.tab ? ' on' : ''}" data-f data-a="tab" data-id="${x.id}" data-k="tab-${x.id}" role="tab" aria-selected="${x.id === st.tab}" aria-label="${esc(t(x.key))}">${img(x.icon)}<em>${t(x.key)}</em>${tabDot(x.id)}</button>`).join('')}</div>
+      <div class="ha-tabs" role="tablist">${TABS.map(x => `<button class="ha-itab${x.id === st.tab ? ' on' : ''}" data-f data-a="tab" data-id="${x.id}" data-k="tab-${x.id}" role="tab" aria-selected="${x.id === st.tab}" aria-label="${esc(t(x.key))}">${tabImg(x)}<em>${t(x.key)}</em>${tabDot(x.id)}</button>`).join('')}</div>
     </div>`;
+  }
+  function tabImg(x) { // ui_tab_secondary may not exist yet -> fallback sprite
+    if (x.alt) { let u = ''; try { u = UI.spriteUrl ? UI.spriteUrl(x.icon) : ''; } catch (e) {} if (!u || /blank|data:image\/gif/.test(u)) return img(x.alt); }
+    return img(x.icon);
   }
   function tabDot(id) {
     try {
@@ -284,7 +299,7 @@
       const o = sys().owned(kind, d.id);
       const opts = o ? { lvl: sys().level(kind, d.id), equipped: d.id === eq, up: canUp(kind, d.id) } : { price: d.price, locked: true };
       if (kind === 'weapon') opts.tag = weaponTag(d);
-      return `<div class="ha-cell" data-f data-a="item" data-kind="${kind}" data-id="${d.id}" data-k="${kind}-${d.id}">${tile(d.r, img(spriteOf(kind, d.id), kind === 'ship' ? 'sh' : ''), opts)}<span class="ha-cap${o ? '' : ' dim'}" data-fit2="8">${esc(t(d.nameKey))}</span></div>`;
+      return `<div class="ha-cell" data-f data-a="item" data-kind="${kind}" data-id="${d.id}" data-k="${kind}-${d.id}">${tile(tierOf(kind, d), img(spriteOf(kind, d.id), kind === 'ship' ? 'sh' : ''), opts)}<span class="ha-cap${o ? '' : ' dim'}" data-fit2="8">${esc(t(d.nameKey))}</span></div>`;
     };
     const sec = (key, arr) => arr.length ? `<div class="ha-cat">${t(key)} <i>· ${arr.length}</i></div><div class="ha-grid g5">${arr.map(cell).join('')}</div>` : '';
     let sub;
@@ -319,7 +334,7 @@
     if (!S.gear.items.length) list = `<div class="ha-empty">${t('hangar.noGear')}</div>`;
     else {
       list = so.filter(sl => !filt || sl === filt).map(sl => {
-        const arr = S.gear.items.filter(it => it.slot === sl).sort((a, b) => b.r - a.r || isEq(b.id) - isEq(a.id) || b.lvl - a.lvl);
+        const arr = S.gear.items.filter(it => it.slot === sl).sort((a, b) => gtier(b) - gtier(a) || isEq(b.id) - isEq(a.id) || b.lvl - a.lvl);
         if (!arr.length) return '';
         return `<div class="ha-cat">${t('hangar.slot.' + sl)} <i>· ${arr.length}</i></div><div class="ha-grid">${arr.map(it => gearCell(it, mode, picked, first, best)).join('')}</div>`;
       }).join('') || `<div class="ha-empty">${t('hangar.noGear')}</div>`;
@@ -329,9 +344,9 @@
   function gearCell(it, mode, picked, first, best) {
     const eq = isEq(it.id), pk = picked.includes(it.id);
     let dim = false;
-    if (mode === 'merge') dim = it.r >= 4 || (!!first && !pk && (it.slot !== first.slot || it.r !== first.r || picked.length >= 3));
+    if (mode === 'merge') dim = gtier(it) >= 4 || (!!first && !pk && (it.slot !== first.slot || gtier(it) !== gtier(first) || picked.length >= 3));
     if (mode === 'sell') dim = eq;
-    return `<div class="ha-cell${pk ? ' picked' : ''}${dim ? ' dim' : ''}" data-f data-a="gear" data-id="${it.id}" data-k="g-${it.id}">${tile(it.r, img(gearSprite(it)), { lvl: it.lvl, equipped: eq, up: !mode && (eq ? canUpGear(it) : best.has(it.id)), set: mode ? null : it.set, pick: mode ? pk : null })}</div>`;
+    return `<div class="ha-cell${pk ? ' picked' : ''}${dim ? ' dim' : ''}" data-f data-a="gear" data-id="${it.id}" data-k="g-${it.id}">${tile(gtier(it), img(gearSprite(it)), { lvl: it.lvl, equipped: eq, up: !mode && (eq ? canUpGear(it) : best.has(it.id)), set: mode ? null : it.set, pick: mode ? pk : null })}</div>`;
   }
   const bonusTxt = (id, b) => t('set.' + id + '.' + b).replace(/^\s*\d+\s*:\s*/, '');
   function setLegend() {
@@ -378,7 +393,7 @@
     if (a === 'chip') { sfx('click'); st.filter = id || null; redraw(); return; }
     if (a === 'slot') {
       sfx('click');
-      const map = { ship: 'ships', weapon: 'weapons', turret: 'turrets', comp: 'comps' };
+      const map = { ship: 'ships', weapon: 'weapons', turret: 'turrets', comp: 'comps', secondary: 'secondary' };
       st.tab = map[id] || 'gear'; st.mode = null; st.picked = []; st.filter = map[id] ? null : id;
       UI.render(s);
       if (map[id]) { const e = eqOf(id); if (e) UI.detail(id, e); } else { const g = St().gear.eq[id]; if (g) UI.detail('gear', g); else refocusTab(s); }
@@ -402,7 +417,7 @@
       sfx('click'); redraw(); return;
     }
     if (a === 'sellCommon') {
-      const com = St().gear.items.filter(i => i.r === 0 && !isEq(i.id)).map(i => i.id);
+      const com = St().gear.items.filter(i => gtier(i) === 0 && !isEq(i.id)).map(i => i.id);
       if (!com.length) { toast(t('hangar.sellNone')); sfx('error'); return; }
       const p = st.picked || [], allIn = com.every(x => p.includes(x));
       st.picked = allIn ? p.filter(x => !com.includes(x)) : Array.from(new Set(p.concat(com)));
@@ -414,7 +429,7 @@
       const r = sys().merge(st.picked);
       if (ok(r)) {
         sfx('merge'); buzz(25); st.picked = []; st.mode = mergeCount() ? 'merge' : null; redraw();
-        toast(t('hangar.merged', { r: rname(r.item.r) }), 'warm'); UI.detail('gear', r.item.id);
+        toast(t('hangar.merged', { r: rname(gtier(r.item)) }), 'warm'); UI.detail('gear', r.item.id);
       }
       return;
     }
@@ -490,13 +505,15 @@
     m._render();
     return m;
   };
-  const ROWS = { ship: ['hp', 'atk', 'shd', 'rate', 'speed', 'crit', 'dps', 'power'], weapon: ['shot', 'sps', 'dps', 'power'], turret: ['shot', 'sps', 'dps', 'power'], comp: ['shot', 'guns', 'dps', 'power'] };
+  const ROWS = { ship: ['hp', 'atk', 'shd', 'rate', 'speed', 'crit', 'dps', 'power'], weapon: ['shot', 'sps', 'dps', 'power'], turret: ['shot', 'sps', 'dps', 'power'], comp: ['shot', 'guns', 'dps', 'power'], secondary: ['shot', 'sps', 'dps', 'power'] };
   function val(kind, k, cs) {
     if (k === 'shot') {
       if (kind === 'weapon') return cs.atk * cs.weapon.def.dmg * cs.weapon.dmgMult;
       if (kind === 'turret') return cs.turret ? cs.atk * cs.turret.def.dmg * cs.turret.dmgMult : null;
       if (kind === 'comp') return cs.comp ? cs.atk * cs.comp.dmgFrac : null;
+      if (kind === 'secondary') return cs.secondary ? cs.atk * cs.secondary.def.dmg * cs.secondary.mult : null;
     }
+    if (k === 'sps' && kind === 'secondary') return cs.secondary ? (cs.secondary.def.count || 1) / (cs.secondary.def.cd || 1) : null;
     if (k === 'sps') { if (kind === 'weapon') return cs.weapon.def.rate * cs.rate; return cs.turret ? cs.turret.def.rate * (cs.turret.def.count || 1) : null; }
     if (k === 'guns') return cs.comp ? cs.comp.def.guns : null;
     return cs[k];
@@ -525,7 +542,7 @@
     return `<div class="ha-card r${rc}">
       <div class="ha-art">${o.equipped ? `<span class="ha-eqtag">${t('hangar.dt.equipped')}</span>` : ''}${img(o.sprite, 'art' + (o.big ? ' ' + o.big : ''))}</div>
       <b class="ha-dn" data-fit="10">${esc(o.name)}</b>
-      <span class="ha-dsub hac${rc}" data-fit="9">${esc(o.sub)}</span>
+      <span class="ha-dsub hac${rc}" data-fit="9">${esc(o.sub)}</span>${o.tline ? `<span class="ha-tline" data-fit="8">${esc(o.tline)}</span>` : ''}
       ${o.lvl ? `<div class="ha-dl"><span>${t('hangar.dt.lvl', { a: o.lvl[0], b: o.lvl[1] })}</span><i class="ha-bar"><i style="width:${Math.min(100, o.lvl[0] / o.lvl[1] * 100).toFixed(1)}%"></i></i></div>` : o.locked ? `<div class="ha-dl"><span>${t('hangar.dt.locked')}</span></div>` : ''}
       ${o.desc ? `<p class="ha-desc">${o.desc}</p>` : ''}${o.extra || ''}</div>`;
   }
@@ -540,21 +557,29 @@
     const rows = ROWS[kind].map(k => { const a = val(kind, k, A), b = Bs ? val(kind, k, Bs) : null; return { l: t('hangar.st.' + k), a: fmtV(k, a), b: Bs ? fmtV(k, b) : null, c: Bs ? cmp(a, b) : 0 }; });
     const up = owned ? sys().price(kind, id, lvl) : null;
     const desc = kind === 'ship' ? `<b>${t('hangar.dt.perk')}:</b> ${esc(t(d.perkKey))}` : esc(t(d.descKey));
-    const card = cardHtml({ r: d.r, sprite: spriteOf(kind, id), big: kind === 'ship' ? 'sh' : '', name: t(d.nameKey), sub: rname(d.r) + ' · ' + t('hangar.slot.' + kind),
-      lvl: owned ? [lvl, max] : null, locked: !owned, equipped: eq, desc, extra: kind === 'weapon' ? weaponExtra(d) : '' });
+    const tr = tierOf(kind, d, owned ? lvl : 0);
+    const card = cardHtml({ r: tr, sprite: spriteOf(kind, id), big: kind === 'ship' ? 'sh' : '', name: t(d.nameKey), sub: rname(tr) + ' · ' + t('hangar.slot.' + kind),
+      tline: tierLine(kind, d, owned ? lvl : 0), lvl: owned ? [lvl, max] : null, locked: !owned, equipped: eq, desc,
+      extra: kind === 'weapon' ? skillHtml(d, owned ? lvl : 1) + weaponExtra(d) : '' });
     const acts = [];
     if (!owned) acts.push(btn('buy', `${t('hangar.dt.buy')} ${gem()}${fmt(d.price)}`, 'pri wide', true));
     else {
       acts.push(up != null ? btn('up', `${t('hangar.dt.up')} ${gem()}${fmt(up)}`, 'pri wide' + (cry() < up ? ' poor' : ''), eq) : `<span class="ha-maxed wide">${t('hangar.dt.max')}</span>`);
       if (!eq) acts.push(btn('equip', t('hangar.dt.equip'), 'sec', true));
-      if (eq && (kind === 'turret' || kind === 'comp')) acts.push(btn('unequip', t('hangar.dt.unequip'), 'back'));
+      if (eq && OPTIONAL[kind]) acts.push(btn('unequip', t('hangar.dt.unequip'), 'back'));
     }
     acts.push(btn('close', t('hangar.dt.close'), 'mut'));
     return card + sideHtml(rows, !!Bs, acts);
   }
+  // weapon skill line ("Abilitate: Overcharge - every 8 s ...") with numbers for the weapon level
+  function skillHtml(d, lvl) {
+    const sk = d.skill; if (!sk) return '';
+    let v = {}; try { v = D().skillVars ? D().skillVars(d, lvl) : {}; } catch (e) {}
+    return `<div class="ha-skill"><b>${t('hangar.dt.skill')}: ${esc(t(sk.nameKey || 'wpn.' + d.id + '.skill.name'))}</b><span>${esc(t(sk.descKey || 'wpn.' + d.id + '.skill.desc', v))}</span></div>`;
+  }
   function gearDetail(id) {
     const it = sys().item(id); if (!it) return '';
-    const eq = isEq(id), max = D().GEAR.maxLvl(it.r), up = sys().price('gear', it);
+    const eq = isEq(id), max = sys().maxLevel ? sys().maxLevel('gear') : D().GEAR.maxLvl(it.r), up = sys().price('gear', it);
     const a = sys().itemStats(it), b = up != null ? sys().itemStats(Object.assign({}, it, { lvl: it.lvl + 1 })) : null;
     const set = it.set && (D().SETS || []).find(x => x.id === it.set);
     const cnt = set ? (sys().setCounts()[set.id] || 0) : 0;
@@ -565,7 +590,8 @@
     const showTot = totB && TK.some(k => Math.abs((totB[k] || 0) - (totA[k] || 0)) > 0.5);
     if (showTot) rows.push({ sec: eq ? t('hangar.dt.shipUp') : t('hangar.dt.shipEq') }, ...TK.map(k => ({ l: t('hangar.st.' + k), a: fmtV(k, totA[k]), b: fmtV(k, totB[k]), c: cmp(totA[k], totB[k]) })));
     const setHtml = set ? `<div class="ha-dset"><b>${setIco(set.id)}${esc(t('hangar.set', { s: t(set.nameKey) }))} ${cnt}/4</b><span class="${cnt >= 2 && eq ? 'on' : ''}">${esc(t('set.' + set.id + '.b2'))}</span><span class="${cnt >= 4 && eq ? 'on' : ''}">${esc(t('set.' + set.id + '.b4'))}</span></div>` : '';
-    const card = cardHtml({ r: it.r, sprite: gearSprite(it), name: t(it.nameKey), sub: rname(it.r) + ' · ' + t('hangar.slot.' + it.slot), lvl: [it.lvl, max], equipped: eq, extra: setHtml });
+    const gt = gtier(it);
+    const card = cardHtml({ r: gt, sprite: gearSprite(it), name: t(it.nameKey), sub: rname(gt) + ' · ' + t('hangar.slot.' + it.slot), tline: tierLine('gear', it, it.lvl), lvl: [it.lvl, max], equipped: eq, extra: setHtml });
     const acts = [];
     acts.push(up != null ? btn('up', `${t('hangar.dt.up')} ${gem()}${fmt(up)}`, 'pri wide' + (cry() < up ? ' poor' : ''), eq) : `<span class="ha-maxed wide">${t('hangar.dt.max')}</span>`);
     acts.push(eq ? btn('unequip', t('hangar.dt.unequip'), 'back') : btn('equip', t('hangar.dt.equip'), 'sec', true));

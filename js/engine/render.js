@@ -179,14 +179,21 @@
     // player projectiles
     for (const b of R.bullets) {
       if (b.kind === 'flame') { A.draw(g, b.spr, b.x, b.y, Math.floor((1 - b.life / b.ml) * 3)); continue; }
+      if (b.kind === 'wave') { drawWave(g, b); continue; }
+      if (b.kind === 'nanite' || b.kind === 'pellet') { if (b.spr && A.has(b.spr)) A.draw(g, b.spr, b.x, b.y, A.frameAt(b.spr, R.time)); else { P.rect(g, b.x - 1, b.y - 1, 2, 2, b.col); if (b.kind === 'nanite') P.rect(g, b.x, b.y, 1, 1, '#ffffff'); } continue; }
+      if (b.kind === 'blaster' || b.kind === 'secm') { const s = b.spr && A.has(b.spr) ? A.get(b.spr) : null, an = Math.atan2(b.vy, b.vx);
+        if (s) { g.save(); g.translate(Math.round(b.x), Math.round(b.y)); g.rotate(an + Math.PI / 2); g.drawImage(s.img, 0, 0, s.w, s.h, -Math.round(s.w / 2), -Math.round(s.h / 2), s.w, s.h); g.restore(); }
+        else { const L = b.kind === 'blaster' ? 4 : 2; P.line(g, b.x, b.y, b.x - Math.cos(an) * L, b.y - Math.sin(an) * L, b.col, 2); if (b.kind === 'blaster') P.line(g, b.x, b.y, b.x - Math.cos(an) * (L - 1), b.y - Math.sin(an) * (L - 1), '#ffd0c8', 1); }
+        if (b.kind === 'blaster') NC.fx.drawGlow(g, b.x, b.y, 4, '#e0574f', 0.35); continue; }
       if (b.col && !A.has(b.spr)) { P.rect(g, b.x - 1, b.y - 3, 2, 5, b.col); continue; }
       if (b.kind === 'missile') { // nose points along the flight direction (sprite faces up)
-        const s = A.get(b.spr); if (s && s.img) { g.save(); g.translate(Math.round(b.x), Math.round(b.y)); g.rotate(Math.atan2(b.vy, b.vx) + Math.PI / 2);
+        const s = A.has(b.spr) ? A.get(b.spr) : null; if (s && s.img) { g.save(); g.translate(Math.round(b.x), Math.round(b.y)); g.rotate(Math.atan2(b.vy, b.vx) + Math.PI / 2);
           const fw = s.w, fh = s.h; g.drawImage(s.img, 0, 0, fw, fh, -Math.round(fw / 2), -Math.round(fh / 2), fw, fh); g.restore(); continue; }
       }
       A.draw(g, b.spr, b.x, b.y, 0, { flipY: b.vy > 30 });
     }
     for (const r of R.rails) { const x2 = r.x + Math.cos(r.ang) * r.len, y2 = r.y + Math.sin(r.ang) * r.len; g.globalAlpha = r.life / r.ml; P.line(g, r.x, r.y, x2, y2, r.evo ? '#fee761' : '#feae34', 3); P.line(g, r.x, r.y, x2, y2, '#ffffff', 1); g.globalAlpha = 1; }
+    drawWeaponFx(g, R, t);
     // turret, companion, orbit blades
     if (R.tur) { if (R.tur.beam) { P.line(g, R.tur.x, R.tur.y, R.tur.beam.x, R.tur.beam.y, '#feae34', 1); } A.draw(g, 'tur_' + R.tur.id, R.tur.x, R.tur.y); }
     if (R.comp) A.draw(g, 'comp_' + R.comp.id, R.comp.x, R.comp.y);
@@ -213,6 +220,54 @@
       else { P.line(g, bm.x, bm.y, x2, y2, bm.col, Math.max(2, Math.round(bm.w))); P.line(g, bm.x, bm.y, x2, y2, '#ffffff', Math.max(1, Math.round(bm.w / 3))); }
     }
     F.draw(g, 'over');
+  }
+
+  // ------------------------------------------------------------ 3.3: new weapon projectiles, skills, secondaries
+  function drawWave(g, b) { // crescent along = -lat^2/(2.5w), fades out at the end of its life
+    const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, w = b.w, k = Math.min(1, b.life / (b.ml || 1) * 2.5);
+    const col = b.evo ? '#b89ad8' : '#73b9c6', core = b.evo ? '#efe4ff' : '#d8f2f6';
+    g.globalAlpha = k;
+    const n = Math.max(6, Math.round(w * 1.4));
+    for (let i = 0; i <= n; i++) { const lat = (i / n - 0.5) * 2 * w, al = -lat * lat / (2.5 * w), x = b.x + ux * al - uy * lat, y = b.y + uy * al + ux * lat;
+      g.fillStyle = col; g.fillRect(Math.round(x - ux * 2), Math.round(y - uy * 2), 1, 1); g.fillRect(Math.round(x - ux), Math.round(y - uy), 1, 1); g.fillStyle = core; g.fillRect(Math.round(x), Math.round(y), 1, 1); }
+    g.globalAlpha = 1; NC.fx.drawGlow(g, b.x, b.y, w * 0.7, col, 0.25 * k);
+  }
+  function beamSeg(g, x1, y1, x2, y2, col, core, w, id) { // beam: sprite tile along the line when art has it, else pixel lines
+    const A = NC.assets;
+    if (id && A.has(id)) { const s = A.get(id), L = Math.hypot(x2 - x1, y2 - y1), an = Math.atan2(y2 - y1, x2 - x1); g.save(); g.translate(Math.round(x1), Math.round(y1)); g.rotate(an - Math.PI / 2);
+      for (let d = 0; d < L; d += s.h) g.drawImage(s.img, 0, 0, s.w, Math.min(s.h, L - d), -Math.round(s.w / 2), Math.round(d), s.w, Math.min(s.h, L - d)); g.restore(); return; }
+    P.line(g, x1, y1, x2, y2, col, w); P.line(g, x1, y1, x2, y2, core, Math.max(1, w - 2));
+  }
+  function drawWeaponFx(g, R, t) {
+    const A = NC.assets, F = NC.fx, p = R.p;
+    if (R.drill && p.alive) for (const bm of R.drill.beams) { const o = bm.tgt; if (!o || o.dead) continue;
+      const k = bm.ramp, w = 1 + Math.min(3, Math.round(k * 1.2)), jx = Math.sin(t * 40) * 0.6;
+      beamSeg(g, p.x, p.y - 10, o.x + jx, o.y, k > 1.5 ? '#c8a0ff' : '#9a78b8', '#efe4ff', w + 1, 'proj_drill');
+      if (A.has('proj_drill_hit')) A.draw(g, 'proj_drill_hit', o.x, o.y, A.frameAt('proj_drill_hit', t)); else P.disc(g, o.x, o.y, 1 + (Math.floor(t * 20) % 2), '#efe4ff');
+      F.drawGlow(g, o.x, o.y, 5 + k * 3, '#9a78b8', 0.5); F.drawGlow(g, p.x, p.y - 10, 4, '#9a78b8', 0.4); }
+    for (const f of R.skfx || []) {
+      const k = Math.max(0, f.t / (f.ml || 1));
+      if (f.type === 'beam' && f.x != null) { const x2 = f.x + Math.cos(f.ang) * 320, y2 = f.y + Math.sin(f.ang) * 320, w = Math.round(f.w * (0.7 + 0.3 * Math.sin(t * 50)));
+        beamSeg(g, f.x, f.y, x2, y2, '#2ce8f5', '#ffffff', w, A.has('fx_skill_beam') ? 'fx_skill_beam' : null); F.drawGlow(g, f.x, f.y, 10, '#2ce8f5', 0.7); }
+      else if (f.type === 'fring') { g.globalAlpha = 0.5 + 0.5 * k; P.circle(g, f.x, f.y, f.r, '#feae34'); P.circle(g, f.x, f.y, f.r - 1, '#f77622'); P.circle(g, f.x, f.y, f.r - 3, '#b0605a'); g.globalAlpha = 1; }
+      else if (f.type === 'kring') { const r = f.r * (1 - k * 0.7); g.globalAlpha = k; P.circle(g, f.x, f.y, r, '#f0c070'); P.circle(g, f.x, f.y, r - 2, '#e0a060'); g.globalAlpha = 1; }
+      else if (f.type === 'strike' && f.delay <= 0 && f.x != null) { if (A.has('fx_skill_strike')) A.draw(g, 'fx_skill_strike', f.x, f.y - 8, Math.floor((1 - k) * A.get('fx_skill_strike').frames)); g.globalAlpha = k * 0.5; g.fillStyle = '#c8e8ff'; g.fillRect(Math.round(f.x) - 1, 0, 3, Math.round(f.y)); g.globalAlpha = 1; }
+      else if (f.type === 'hole') { const fade = Math.min(1, f.t * 3, (f.ml - f.t) * 6);
+        if (A.has('fx_skill_singularity')) A.draw(g, 'fx_skill_singularity', f.x, f.y, A.frameAt('fx_skill_singularity', t), { alpha: fade });
+        else { g.globalAlpha = fade; P.disc(g, f.x, f.y, 5, '#090a14'); P.circle(g, f.x, f.y, 6, '#c65197'); for (let i = 0; i < 3; i++) P.circle(g, f.x, f.y, 8 + ((t * 30 + i * 9) % (f.r - 6)), i ? '#402751' : '#68386c'); g.globalAlpha = 1; }
+        F.drawGlow(g, f.x, f.y, 10, '#9a78b8', 0.4 * fade); }
+    }
+    if (R.skRateT > 0 && p.alive) F.drawGlow(g, p.x, p.y, 10 + Math.sin(t * 20) * 2, '#e0574f', 0.35);
+    const S = R.sec; if (!S || !p.alive) return;
+    for (const m of S.mines) { const armed = m.t >= 0.4, bl = Math.floor(t * (armed ? 6 : 14)) % 2;
+      if (A.has('sec_mine')) A.draw(g, 'sec_mine', m.x, m.y, A.frameAt('sec_mine', m.t)); else { P.disc(g, m.x, m.y, 2, '#5a6988'); P.rect(g, m.x, m.y, 1, 1, bl ? '#c0645c' : '#3a4466'); }
+      if (armed && bl) P.circle(g, m.x, m.y, 4, '#c0645c'); }
+    if (S.id === 'blade' && S.pts) for (const q of S.pts) { if (!q) continue;
+      if (A.has('sec_blade_obj')) { const s = A.get('sec_blade_obj'); g.save(); g.translate(Math.round(q.x), Math.round(q.y)); g.rotate(t * 12); g.drawImage(s.img, 0, 0, s.w, s.h, -Math.round(s.w / 2), -Math.round(s.h / 2), s.w, s.h); g.restore(); }
+      else { const a = t * 12, c = Math.cos(a) * 3, s2 = Math.sin(a) * 3; P.line(g, q.x - c, q.y - s2, q.x + c, q.y + s2, '#c0cbdc'); P.line(g, q.x + s2, q.y - c, q.x - s2, q.y + c, '#8a94a3'); P.rect(g, q.x, q.y, 1, 1, '#ffffff'); } }
+    if (S.id === 'drone') { if (A.has('sec_drone_obj')) A.draw(g, 'sec_drone_obj', S.x, S.y + Math.round(Math.sin(t * 4)), A.frameAt('sec_drone_obj', t));
+      else { P.rect(g, S.x - 3, S.y - 1, 7, 3, '#5a6988'); P.rect(g, S.x - 1, S.y - 3, 3, 2, '#78a86c'); P.rect(g, S.x, S.y - 2, 1, 1, '#ffffff'); } }
+    if (S.id === 'tesla') { const c = S.t < 0.15 ? '#ffffff' : '#8fd3ff'; P.rect(g, p.x - 1, p.y - 2, 3, 1, c); }
   }
 
   // Draws a ship preview into any canvas at integer scale (for UI / loading screen helpers)

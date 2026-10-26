@@ -5,7 +5,7 @@
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = NC.fx, EN = NC.enemies, B = NC.bosses, W = NC.weapons;
-  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.2.0', hudTop: 22 };
+  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.3.0', hudTop: 22 };
   X.G = G;
   // HUD safe line (logical px): HUD agent sets NC.game.hudTop = bottom of the top HUD; nothing rests above hudTop + 4
   X.safeTop = () => { const h = +G.hudTop; return U.clamp(isFinite(h) && h > 0 ? h : 22, 0, G.H * 0.3) + 4; };
@@ -69,6 +69,7 @@
       weapon: { id: w.id || 'laser', lvl: w.lvl || 1, mult: w.dmgMult || w.mult || 1 },
       turret: tur ? { id: tur.id, lvl: tur.lvl || 1, dmgMult: tur.dmgMult } : null,
       companion: comp ? { id: comp.id, lvl: comp.lvl || 1, dmgFrac: comp.dmgFrac } : null,
+      secondary: s.secondary && (s.secondary.id || typeof s.secondary === 'string') ? (typeof s.secondary === 'string' ? { id: s.secondary, lvl: 1, mult: 1 } : { id: s.secondary.id, lvl: s.secondary.lvl || 1, mult: s.secondary.mult || s.secondary.dmgMult || 0 }) : null,
     };
   }
 
@@ -505,7 +506,7 @@
   // ------------------------------------------------------------ cards
   function cardList() { return (D().CARDS && D().CARDS.length ? D().CARDS : DEFAULT_CARDS); }
   const DEFAULT_CARDS = [['dmg', 10, 10, 0.15], ['rate', 8, 10, 0.12], ['gun', 3, 6, 1], ['pierce', 2, 4, 1], ['bounce', 2, 5, 1], ['missile', 4, 6, 1], ['orbit', 4, 6, 1], ['shield', 5, 8, 0.3], ['heal', 99, 7, 0.4], ['magnet', 3, 5, 0.5], ['speed', 4, 6, 0.1], ['crit', 5, 7, 0.08], ['vamp', 3, 4, 0.01],
-    ...['laser', 'plasma', 'missile', 'rail', 'flame'].map(w => ['evo_' + w, 5, 5, 0.08, w])].map(([id, max, w, val, weapon]) => ({ id, max, w, val, weapon, nameKey: 'card.' + id + '.name', descKey: 'card.' + id + '.desc', sprite: 'card_' + id }));
+    ...['laser', 'plasma', 'missile', 'rail', 'flame', 'blaster', 'shotgun', 'arc', 'wave', 'drill', 'swarmer'].map(w => ['evo_' + w, 5, 5, 0.08, w])].map(([id, max, w, val, weapon]) => ({ id, max, w, val, weapon, nameKey: 'card.' + id + '.name', descKey: 'card.' + id + '.desc', sprite: 'card_' + id }));
   // card rarity (SPEC-31 §2.6): def.r from NC.DATA (data agent); fallback table; evo cards Legendary
   const CARD_R = { dmg: 0, rate: 0, heal: 0, speed: 0, magnet: 0, shield: 1, bounce: 1, missile: 1, crit: 1, pierce: 2, orbit: 2, vamp: 2, gun: 3 };
   const cardR = (c) => (typeof c.r === 'number' ? U.clamp(c.r | 0, 0, 4) : c.weapon ? 3 : (CARD_R[c.id] != null ? CARD_R[c.id] : 0));
@@ -642,11 +643,18 @@
     else if (wid === 'missile') shots = Math.min(8, E.guns + (evo ? 2 : 0)) * (evo ? 0.8 : 1) * 1.3;
     else if (wid === 'rail') shots = Math.min(4, E.guns) * 1.5;
     else if (wid === 'flame') shots = (1 + Math.floor((E.guns - 1) / 2)) * 1.5;
+    else if (wid === 'blaster') shots = Math.min(5, E.guns) * Math.round(evo ? (wd.evoD && wd.evoD.burst) || 5 : wd.burst || 3) * (evo ? 1.1 : 1);
+    else if (wid === 'shotgun') shots = Math.min(14, (evo ? 9 : wd.pellets || 6) + 2 * (E.guns - 1)) * 0.6;
+    else if (wid === 'arc') { let f = 1, s2 = 0; for (let i = 0; i <= (evo ? 6 : wd.jumps || 3); i++) { s2 += f; f *= wd.falloff || 0.8; } shots = Math.min(3, E.guns) * s2 * 0.75; }
+    else if (wid === 'wave') shots = Math.min(3, E.guns) * 2.2 * (evo ? 1.3 : 1) * 1.33;
+    else if (wid === 'drill') shots = (Math.min(3, E.guns) + (evo ? 1 : 0)) * (1 + ((evo ? 4 : wd.rampMax || 2.6) - 1) * 0.6);
+    else if (wid === 'swarmer') shots = Math.min(6, E.guns) * (evo ? 2 : 1) * 0.9;
     let dps = E.shot * E.rate * shots;
     if (R.comp) dps += E.shot * (R.comp.frac || 2 / 3 * (1 + 0.03 * (R.comp.lvl - 1))) * E.rate * (R.comp.def.guns || 1);
     if (R.tur) { const T = R.tur, d = T.def, lm = T.mult || 1 + 0.08 * (T.lvl - 1); dps += E.atk * d.dmg * lm * (T.id === 'beam' ? 1 : d.rate || 1); }
     if (m.missile) dps += E.atk * 1.4 * m.missile / 2;
     if (m.orbit) dps += E.atk * 0.7 * m.orbit * 0.6;
+    if (W.extraDps) dps += W.extraDps(E); // weapon skill + secondary weapon (3.3)
     const cards = Object.keys(R.cards).filter(id => R.cards[id] > 0).map(id => { const c = cardList().find(x => x.id === id) || { id, max: 1 }; return { id, lvl: R.cards[id], max: c.max, r: cardR(c), special: !!c.special }; });
     return {
       hp: Math.max(0, Math.round(p.hp)), maxHp: R.maxHp, shd: Math.round(p.shd), maxShd: R.maxShd,

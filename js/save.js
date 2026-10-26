@@ -21,6 +21,7 @@
     weapons: { eq: 'laser', lv: { laser: 1 } },
     turrets: { eq: null, lv: {} },
     comps: { eq: null, lv: {} },
+    secondary: { eq: null, lv: {} },                        // 3.3 secondary weapons (default none; fill() adds it to old saves)
     gear: { items: [], eq: { armor: null, gen: null, core: null, boost: null }, uid: 0 },
     chests: [0, 0, 0, 0, 0], pity: 0,
     cons: { mine: 0, shield: 0, magnet: 0, x2: 0, repair: 0 },
@@ -49,10 +50,17 @@
     const d = D();
     s.crystals = Math.max(0, Math.floor(num(s.crystals))); s.best = Math.max(0, num(s.best)); s.xp = Math.max(0, num(s.xp));
     const clampLv = (obj, list, maxFn) => { for (const k of Object.keys(obj)) { const def = list.find(x => x.id === k); if (!def) continue; obj[k] = NC.clamp(Math.floor(num(obj[k], 1)), 1, maxFn(def)); } };
-    clampLv(s.ships.lv, d.SHIPS, x => d.SHIP_UP.maxLvl(x.r));
-    clampLv(s.weapons.lv, d.WEAPONS, () => d.WEAPON_UP.maxLvl);
-    clampLv(s.turrets.lv, d.TURRETS, () => d.TURRET_UP.maxLvl);
-    clampLv(s.comps.lv, d.COMPANIONS, () => d.COMP_UP.maxLvl);
+    // 3.3: every kind goes to level 50; existing levels are kept (old caps were lower), tiers are derived from levels
+    const MAXL = () => d.MAX_LVL || 50;
+    clampLv(s.ships.lv, d.SHIPS, MAXL);
+    clampLv(s.weapons.lv, d.WEAPONS, MAXL);
+    clampLv(s.turrets.lv, d.TURRETS, MAXL);
+    clampLv(s.comps.lv, d.COMPANIONS, MAXL);
+    if (!s.secondary || typeof s.secondary !== 'object' || Array.isArray(s.secondary)) s.secondary = { eq: null, lv: {} };
+    if (!s.secondary.lv || typeof s.secondary.lv !== 'object') s.secondary.lv = {};
+    clampLv(s.secondary.lv, d.SECONDARY || [], MAXL);
+    for (const k of Object.keys(s.secondary.lv)) if (!(d.SECONDARY || []).some(x => x.id === k)) delete s.secondary.lv[k];
+    if (s.secondary.eq && !s.secondary.lv[s.secondary.eq]) s.secondary.eq = null;
     if (!s.ships.lv.vanator) s.ships.lv.vanator = 1;
     if (!s.weapons.lv.laser) s.weapons.lv.laser = 1;
     if (!s.ships.lv[s.ships.eq]) s.ships.eq = 'vanator';

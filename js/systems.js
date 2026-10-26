@@ -1,5 +1,5 @@
 'use strict';
-// Neon Comet 3.1 - meta systems (DATA agent): economy, inventory, stats, missions, achievements, daily, offline.
+// Neon Comet 3.3 - meta systems (DATA agent): economy, inventory, stats, missions, achievements, daily, offline.
 // Every mutating call returns { ok:true, ... } or { ok:false, err:'<i18n key>' } and persists the save.
 (function (NC) {
   const D = () => NC.DATA;
@@ -46,14 +46,26 @@
   // =====================================================================
   // LOOKUPS
   // =====================================================================
-  const LIST = { ship: 'SHIPS', weapon: 'WEAPONS', turret: 'TURRETS', comp: 'COMPANIONS', cons: 'CONSUMABLES' };
-  const BUCKET = { ship: 'ships', weapon: 'weapons', turret: 'turrets', comp: 'comps' };
+  const LIST = { ship: 'SHIPS', weapon: 'WEAPONS', turret: 'TURRETS', comp: 'COMPANIONS', secondary: 'SECONDARY', cons: 'CONSUMABLES' };
+  const BUCKET = { ship: 'ships', weapon: 'weapons', turret: 'turrets', comp: 'comps', secondary: 'secondary' };
+  const OPTIONAL = { turret: 1, comp: 1, secondary: 1 };   // can be unequipped (eq = null), first buy auto-equips
   sys.def = (kind, id) => { const l = D()[LIST[kind]]; return l ? l.find(x => x.id === id) || null : null; };
   sys.owned = (kind, id) => !!(BUCKET[kind] && S[BUCKET[kind]].lv[id]);
   sys.level = (kind, id) => (BUCKET[kind] && S[BUCKET[kind]].lv[id]) || 0;
-  sys.maxLevel = (kind, id) => {
-    const d = D(), x = sys.def(kind, id); if (!x) return 0;
-    return kind === 'ship' ? d.SHIP_UP.maxLvl(x.r) : kind === 'weapon' ? d.WEAPON_UP.maxLvl : kind === 'turret' ? d.TURRET_UP.maxLvl : d.COMP_UP.maxLvl;
+  // 3.3: max level 50 for every hangar kind (ship, weapon, turret, comp, secondary, gear). id is optional.
+  sys.maxLevel = (kind, id) => { const d = D(); if (id != null && kind !== 'gear' && !sys.def(kind, id)) return 0; return d.MAX_LVL || 50; };
+  // tierOf(kind, id | item | def, lvl?) -> 0..4 = max(base rarity, tier from level). Unowned items show their base rarity.
+  // gear: tierOf('gear', item) or tierOf('gear', itemId).
+  sys.tierOf = (kind, x, lvl) => {
+    const d = D();
+    if (kind === 'gear') { const it = typeof x === 'object' ? x : sys.item(x); return it ? d.tierFor(it.r, lvl != null ? lvl : it.lvl) : 0; }
+    const def = typeof x === 'object' && x ? x : sys.def(kind, x); if (!def) return 0;
+    return d.tierFor(def.r, lvl != null ? lvl : (S ? sys.level(kind, def.id) : 0));
+  };
+  // next tier info for the UI: { tier, next (null at Ultra), at (level that reaches it) }
+  sys.tierInfo = (kind, x, lvl) => {
+    const d = D(), tier = sys.tierOf(kind, x, lvl);
+    return { tier, next: tier >= 4 ? null : tier + 1, at: tier >= 4 ? null : (tier + 1) * 10 };
   };
   sys.item = id => S.gear.items.find(i => i.id === id) || null;
   sys.crystals = () => S.crystals;
@@ -74,8 +86,9 @@
     if (lvl >= sys.maxLevel(kind, id)) return null;
     if (kind === 'ship') return d.SHIP_UP.cost(x.r, lvl);
     if (kind === 'weapon') return d.WEAPON_UP.cost(x.r, lvl);
-    const U = kind === 'turret' ? d.TURRET_UP : d.COMP_UP;
-    return Math.round(x.price * U.costFrac * Math.pow(U.growth, lvl - 1));
+    if (kind === 'turret') return d.TURRET_UP.cost(x.r, lvl);
+    if (kind === 'secondary') return d.SEC_UP.cost(x.r, lvl);
+    return d.COMP_UP.cost(x.r, lvl);
   };
 
   function spend(n) { if (S.crystals < n) return false; S.crystals -= n; return true; }
@@ -103,7 +116,7 @@
     if (sys.owned(kind, id)) return fail('sys.err.owned');
     if (!spend(x.price)) return fail('sys.err.noCrystals');
     S[BUCKET[kind]].lv[id] = 1;
-    if ((kind === 'turret' || kind === 'comp') && !S[BUCKET[kind]].eq) S[BUCKET[kind]].eq = id;
+    if (OPTIONAL[kind] && !S[BUCKET[kind]].eq) S[BUCKET[kind]].eq = id;
     persist();
     return ok({ cost: x.price, lvl: 1 });
   };
@@ -125,14 +138,14 @@
     return ok({ cost: c, lvl: lvl + 1 });
   };
 
-  // equip(kind, id): ship/weapon require owned; turret/comp accept null to unequip; gear: id = item id (null + slot via unequipGear)
+  // equip(kind, id): ship/weapon require owned; turret/comp/secondary accept null to unequip; gear: id = item id (null + slot via unequipGear)
   sys.equip = (kind, id) => {
     if (kind === 'gear') {
       const it = sys.item(id); if (!it) return fail('sys.err.notOwned');
       S.gear.eq[it.slot] = it.id; persist(); return ok({ slot: it.slot });
     }
     if (!BUCKET[kind]) return fail('sys.err.invalid');
-    if (id == null) { if (kind === 'ship' || kind === 'weapon') return fail('sys.err.invalid'); S[BUCKET[kind]].eq = null; persist(); return ok(); }
+    if (id == null) { if (!OPTIONAL[kind]) return fail('sys.err.invalid'); S[BUCKET[kind]].eq = null; persist(); return ok(); }
     if (!sys.owned(kind, id)) return fail('sys.err.notOwned');
     S[BUCKET[kind]].eq = id; persist(); return ok();
   };
@@ -161,20 +174,20 @@
   // item derived values (for UI and computeStats)
   sys.itemStats = (it) => {
     const d = D(), sl = d.GEAR_SLOTS.find(s => s.id === it.slot);
-    const main = sl.base * d.RARITY[it.r].mult * it.q * (1 + d.GEAR.lvlPer * (it.lvl - 1));
+    const main = sl.base * d.RARITY[it.r].mult * it.q * (1 + d.GEAR.lvlPer * (it.lvl - 1)) * d.tierMult(it.r, it.lvl); // 3.3 tier bonus
     const out = { [sl.main]: main };
     if (sl.sec) for (const k of Object.keys(sl.sec)) out[k] = (out[k] || 0) + main * sl.sec[k];
     for (const e of it.ex) out['ex_' + e.id] = (out['ex_' + e.id] || 0) + d.extraValue(e, it.r, it.lvl);
     return out; // hp/shd flat, cr/xp/speed/dashCd/crit percent, ex_<id> percent (ex_magnet px)
   };
 
-  // merge 3 items with same slot AND same rarity -> 1 item of next rarity (level = max of the three)
+  // merge 3 items with same slot AND same CURRENT tier (3.3) -> 1 item whose base rarity = tier + 1 (level = max of the three)
   sys.merge = (ids) => {
     const d = D();
     if (!Array.isArray(ids) || ids.length !== 3 || new Set(ids).size !== 3) return fail('sys.err.mergeRule');
     const its = ids.map(sys.item); if (its.some(x => !x)) return fail('sys.err.notOwned');
-    const { slot, r } = its[0];
-    if (its.some(x => x.slot !== slot || x.r !== r)) return fail('sys.err.mergeRule');
+    const slot = its[0].slot, r = d.tierFor(its[0].r, its[0].lvl);
+    if (its.some(x => x.slot !== slot || d.tierFor(x.r, x.lvl) !== r)) return fail('sys.err.mergeRule');
     if (r >= 4) return fail('sys.err.maxRarity');
     const nr = r + 1, names = d.GEAR_NAMES[slot][nr];
     const cnt = {}; for (const x of its) if (x.set) cnt[x.set] = (cnt[x.set] || 0) + 1;
@@ -193,8 +206,9 @@
   // groups of 3 that can be merged right now: [{slot, r, ids:[...all candidates]}]
   sys.mergeable = () => {
     const g = {};
-    for (const it of S.gear.items) if (it.r < 4) (g[it.slot + ':' + it.r] = g[it.slot + ':' + it.r] || []).push(it);
-    return Object.values(g).filter(a => a.length >= 3).map(a => ({ slot: a[0].slot, r: a[0].r, ids: a.sort((x, y) => y.lvl - x.lvl).map(x => x.id) }));
+    const tr = it => D().tierFor(it.r, it.lvl);
+    for (const it of S.gear.items) if (tr(it) < 4) (g[it.slot + ':' + tr(it)] = g[it.slot + ':' + tr(it)] || []).push(it);
+    return Object.values(g).filter(a => a.length >= 3).map(a => ({ slot: a[0].slot, r: tr(a[0]), ids: a.sort((x, y) => y.lvl - x.lvl).map(x => x.id) }));
   };
 
   // manual multi-select sell. Equipped items are skipped (unequip first).
@@ -210,7 +224,7 @@
     S.crystals += cr; S.stats.sold += n; persist();
     return ok({ crystals: cr, count: n, skipped });
   };
-  sys.sellAll = (maxRarity = 0) => sys.sell(S.gear.items.filter(it => it.r <= maxRarity && !sys.isEquipped(it.id)).map(it => it.id));
+  sys.sellAll = (maxRarity = 0) => sys.sell(S.gear.items.filter(it => D().tierFor(it.r, it.lvl) <= maxRarity && !sys.isEquipped(it.id)).map(it => it.id));
 
   // =====================================================================
   // CHESTS (with pity)
@@ -274,7 +288,7 @@
   sys.computeStats = (s = S) => {
     const d = D(), B = d.BASE;
     const ship = d.SHIPS.find(x => x.id === s.ships.eq) || d.SHIPS[0];
-    const shipLvl = s.ships.lv[ship.id] || 1, shipM = 1 + d.SHIP_UP.per * (shipLvl - 1);
+    const shipLvl = s.ships.lv[ship.id] || 1, shipM = (1 + d.SHIP_UP.per * (shipLvl - 1)) * d.tierMult(ship.r, shipLvl);
     const acct = d.levelFromXp(s.xp), lm = 1 + d.LEVEL_BONUS * (acct.lvl - 1);
     const m = { atk: 0, hp: 0, shd: 0, rate: 0, speed: 0, crit: 0, critDmg: 0, dashCd: 0, regen: 0, cr: 0, xp: 0, hpPct: 0 };
     const addMods = o => { if (o) for (const k of Object.keys(o)) m[k] = (m[k] || 0) + o[k]; };
@@ -294,6 +308,8 @@
     const wdef = d.WEAPONS.find(w => w.id === s.weapons.eq) || d.WEAPONS[0], wl = s.weapons.lv[wdef.id] || 1;
     const tdef = s.turrets.eq ? d.TURRETS.find(t => t.id === s.turrets.eq) : null, tl = tdef ? (s.turrets.lv[tdef.id] || 1) : 0;
     const cdef = s.comps.eq ? d.COMPANIONS.find(c => c.id === s.comps.eq) : null, cl = cdef ? (s.comps.lv[cdef.id] || 1) : 0;
+    const sec = s.secondary || { eq: null, lv: {} };
+    const xdef = sec.eq ? (d.SECONDARY || []).find(x => x.id === sec.eq) : null, xl = xdef ? (sec.lv[xdef.id] || 1) : 0;
 
     const atk = B.atk * ship.mult.atk * shipM * lm * (1 + m.atk);
     const hp = (B.hp * ship.mult.hp * shipM + g.hp) * lm * (1 + m.hp + m.hpPct);
@@ -308,25 +324,28 @@
     const regen = (B.regen != null ? B.regen : 1) * (1 + Math.min(d.REGEN_BONUS_CAP != null ? d.REGEN_BONUS_CAP : 99, regenBonus));
     const crMult = 1 + m.cr + g.cr / 100, xpMult = 1 + m.xp + g.xp / 100 + g.ex_xp / 100;
     const magnet = B.magnet + g.ex_magnet;
-    const wDmg = 1 + d.WEAPON_UP.per * (wl - 1);
+    const wDmg = (1 + d.WEAPON_UP.per * (wl - 1)) * d.tierMult(wdef.r, wl);
     const critF = 1 + crit * (critDmg - 1);
     const dps = atk * wdef.power * wDmg * rate * critF;
-    const tMult = tdef ? 1 + d.TURRET_UP.per * (tl - 1) : 0;
+    const tMult = tdef ? (1 + d.TURRET_UP.per * (tl - 1)) * d.tierMult(tdef.r, tl) : 0;
     const tdps = tdef ? atk * tdef.power * tMult * critF : 0;
-    const cFrac = cdef ? d.COMP_UP.base * (1 + d.COMP_UP.per * (cl - 1)) : 0;
+    const cFrac = cdef ? d.COMP_UP.base * (1 + d.COMP_UP.per * (cl - 1)) * d.tierMult(cdef.r, cl) : 0;
     const cdps = cdef ? atk * cFrac * cdef.guns * rate * 4 * (1 + (cdef.crit || 0)) : 0;
+    const xMult = xdef ? (1 + d.SEC_UP.per * (xl - 1)) * d.tierMult(xdef.r, xl) : 0;
+    const xdps = xdef ? atk * xdef.power * xMult * critF : 0;
     const P = d.POWER;
     const st = {
-      shipId: ship.id, ship, shipLvl, shipMaxLvl: d.SHIP_UP.maxLvl(ship.r), lvl: acct.lvl,
+      shipId: ship.id, ship, shipLvl, shipMaxLvl: d.SHIP_UP.maxLvl(ship.r), shipTier: d.tierFor(ship.r, shipLvl), lvl: acct.lvl,
       atk: Math.round(atk), hp: Math.round(hp), shd: Math.round(shd),
       rate, crit, critDmg, speed, dashCd, regen, regenBonus, crMult, xpMult, magnet,
       flags: Object.assign({}, ship.perk.flags || {}), perk: ship.perk.id,
-      weapon: { id: wdef.id, def: wdef, lvl: wl, dmgMult: wDmg },
-      turret: tdef ? { id: tdef.id, def: tdef, lvl: tl, dmgMult: tMult } : null,
-      comp: cdef ? { id: cdef.id, def: cdef, lvl: cl, dmgFrac: cFrac } : null,
+      weapon: { id: wdef.id, def: wdef, lvl: wl, dmgMult: wDmg, tier: d.tierFor(wdef.r, wl), skill: d.skillAt ? d.skillAt(wdef, wl) : null },
+      turret: tdef ? { id: tdef.id, def: tdef, lvl: tl, dmgMult: tMult, tier: d.tierFor(tdef.r, tl) } : null,
+      comp: cdef ? { id: cdef.id, def: cdef, lvl: cl, dmgFrac: cFrac, tier: d.tierFor(cdef.r, cl) } : null,
+      secondary: xdef ? { id: xdef.id, def: xdef, lvl: xl, mult: xMult, tier: d.tierFor(xdef.r, xl) } : null,
       gear: gearEq, sets,
-      dps: Math.round(dps + tdps + cdps),
-      power: Math.round((dps + tdps + cdps) * P.dps + hp * P.hp + shd * P.shd),
+      dps: Math.round(dps + tdps + cdps + xdps),
+      power: Math.round((dps + tdps + cdps + xdps) * P.dps + hp * P.hp + shd * P.shd),
     };
     return st;
   };
