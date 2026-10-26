@@ -47,7 +47,7 @@
 
   // ------------------------------------------------------------ creation
   B.spawnBoss = (idx) => {
-    const R = X.R, G = X.G, def = B.def(idx), hp = B.bossHp(idx);
+    const R = X.R, G = X.G, def = B.def(idx), hp = Math.round(B.bossHp(idx) * ((NC.game.diffMul && NC.game.diffMul().hp) || 1));
     const b = R.boss = {
       kind: 'boss', big: true, def, idx, id: def.id, spr: 'boss_' + def.id, size: 112, r: 34, x: G.W / 2, y: -60, tx: G.W / 2, ty: 0,
       hp, max: hp, state: 'enter', phase: 0, step: 0, t: 0, cool: 1.2, atk: null, flash: 0, inv: 0, alpha: 1, untargetable: true,
@@ -60,7 +60,7 @@
   };
   B.spawnMini = (n) => {
     const R = X.R, G = X.G, d = B.miniDef(n);
-    const hp = d.hp;
+    const hp = Math.round(d.hp * ((NC.game.diffMul && NC.game.diffMul().hp) || 1));
     const b = R.mboss = {
       kind: 'mboss', big: false, def: d, idx: n, id: d.id, spr: 'mboss_' + d.id, size: 48, r: 17, x: U.rnd(60, G.W - 60), y: -30, tx: G.W / 2, ty: 0,
       hp, max: hp, state: 'enter', phase: 0, step: 0, t: 0, cool: 1, atk: null, flash: 0, inv: 0, alpha: 1, untargetable: true,
@@ -73,7 +73,7 @@
   };
 
   // ------------------------------------------------------------ helpers
-  const tm = (b) => (b.big ? 1 : 0.7) * (NC.DATA && NC.DATA.bossDmgScale ? (b.def.dmgK || 1) * NC.DATA.bossDmgScale(X.R.sector) : 1 + 0.1 * Math.min(X.R.sector, 10));
+  const tm = (b) => (b.big ? 1 : 0.7) * ((NC.game.diffMul && NC.game.diffMul().dmg) || 1) * (NC.DATA && NC.DATA.bossDmgScale ? (b.def.dmgK || 1) * NC.DATA.bossDmgScale(X.R.sector) : 1 + 0.1 * Math.min(X.R.sector, 10));
   function reposition(b) {
     const G = X.G, p = X.R.p;
     let best = null, bs = -1e9;

@@ -140,14 +140,14 @@
     ].join('');
     if (sec === 'display') {
       startDetect(st);
-      const hz = hzInfo(st), cap = (+s.fpsCap === 120 && hz.ok) ? 120 : 60;
+      const hz = hzInfo(st), cap = (+s.fpsCap === 120) ? 120 : 60;
       const note = hz.st === 'ok' ? `<span class="mn-ok">${esc(t('set.fpsHz', { n: hz.hz }))}</span> · ${esc(t('set.fpsCap.hint'))}`
         : hz.st === 'checking' ? `<span class="mn-wait">${esc(t('set.fpsCheck'))}</span>`
           : `<span class="mn-warn">${esc(t('set.fps120no'))}</span>`;
       return [
         MN.grp(t('set.grp.perf')),
         row(t('settings.quality'), seg('quality', [['low', t('settings.quality.low')], ['med', t('settings.quality.med')], ['high', t('settings.quality.high')]], s.quality || 'high'), esc(t('set.quality.hint'))),
-        row(t('set.fpsCap'), seg('fpsCap', [['60', '60 FPS'], ['120', '120 FPS', !hz.ok]], cap), note, 'mn-fpsrow'),
+        row(t('set.fpsCap'), seg('fpsCap', [['60', '60 FPS'], ['120', '120 FPS', false]], cap), note, 'mn-fpsrow'),
         row(t('set.fpsCounter'), tog('fps', !!s.fps), esc(t('set.fpsCounter.hint'))),
         MN.grp(t('set.grp.fx')),
         row(t('settings.shake'), tog('shake', s.shake !== false), esc(t('set.shake.hint'))),
@@ -213,7 +213,7 @@
           UI.restoreFocus({ key: 's-lang-' + v, idx: 0 });
           return;
         }
-        if (k === 'fpsCap') { v = +v === 120 ? 120 : 60; if (v === 120 && !hzInfo(s.state).ok) { UI.toast(t('set.fps120no'), 'bad'); UI.sfx('error'); return; } }
+        if (k === 'fpsCap') { v = +v === 120 ? 120 : 60;  }
         if ((k === 'ctrl' || k === 'aim') && v === 'auto') v = null;
         UI.setSetting(k, v); UI.sfx('click'); UI.rerender(); return;
       }

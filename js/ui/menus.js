@@ -43,7 +43,7 @@
     },
     act(a) {
       UI.sfx('click');
-      if (a === 'start') UI.loadoutPicker(() => UI.launch());
+      if (a === 'start') { if (UI.screens.modes) UI.show('modes'); else UI.loadoutPicker(() => UI.launch()); }
       else if (a === 'exit') UI.show('exit');
       else if (a === 'help') { if (UI.screens.help) UI.show('help'); else UI.toast(t('menu.helpSoon')); }
       else UI.show(a);

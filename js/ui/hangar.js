@@ -253,7 +253,7 @@
         <div class="ha-col">${slot('armor', gearSlot('armor'))}${slot('gen', gearSlot('gen'))}${slot('core', gearSlot('core'))}</div>
       </div>
       <div class="ha-acts">${up}
-        <button class="ha-b sec ha-c${nCh ? ' dotted' : ''}" data-f data-a="goChests" data-k="ha-gochests">${t('hangar.chestsBtn')}${nCh ? `<span class="ha-dot">${nCh > 99 ? '99+' : nCh}</span>` : ''}</button>
+        
         <button class="ha-b mut ha-c${nM ? ' dotted' : ''}" data-f data-a="goMerge" data-k="ha-gomerge">${t('hangar.mergeBtn')}${nM ? `<span class="ha-dot">${nM}</span>` : ''}</button>
       </div></div>`;
   }

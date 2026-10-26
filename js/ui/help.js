@@ -7,7 +7,13 @@
   const t = (k, p) => (NC.t ? NC.t(k, p) : k);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmt = (n) => (UI.fmt ? UI.fmt(n) : String(Math.round(n)));
-  const img = (id, cls) => (UI.img ? UI.img(id, cls || 'ico24') : '');
+  // frame 0 only (animated strips must not show all frames), fixed box so it never overlaps text
+  const img = (id, cls) => {
+    const a = NC.assets && NC.assets.get ? NC.assets.get(id) : null, url = UI.spriteUrl ? UI.spriteUrl(id) : '';
+    const n = Math.max(1, (a && a.frames) || 1), w = (a && a.w) || 16, h = (a && a.h) || 16;
+    const box = cls === 'ico16' ? 16 : 30, sc = Math.max(0.25, Math.min(box / w, box / h));
+    return `<span class="hp-ic ${cls || ''}" style="display:inline-block;flex:none;vertical-align:middle;width:${box}px;height:${box}px;position:relative;overflow:hidden"><span style="position:absolute;left:50%;top:50%;width:${w * sc}px;height:${h * sc}px;transform:translate(-50%,-50%);background:url('${url}') 0 0/${n * 100}% 100% no-repeat;image-rendering:pixelated"></span></span>`;
+  };
   const D = () => NC.DATA || {};
   const rcol = (r) => { const R = (D().RARITY || [])[r]; return R ? R.col : 'var(--r' + r + ')'; };
   const SECS = ['play', 'controls', 'pickups', 'cards', 'hangar', 'bosses', 'bestiary', 'levels'];

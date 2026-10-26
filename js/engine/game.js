@@ -5,7 +5,7 @@
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = NC.fx, EN = NC.enemies, B = NC.bosses, W = NC.weapons;
-  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.1.0', hudTop: 22 };
+  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.1.1', hudTop: 22 };
   X.G = G;
   // HUD safe line (logical px): HUD agent sets NC.game.hudTop = bottom of the top HUD; nothing rests above hudTop + 4
   X.safeTop = () => { const h = +G.hudTop; return U.clamp(isFinite(h) && h > 0 ? h : 22, 0, G.H * 0.3) + 4; };
@@ -74,8 +74,14 @@
 
   // ------------------------------------------------------------ run lifecycle
   // NC.game.start(loadout?) loadout = { consumables: [{id, count}] } (default: NC.sys.runConsumables())
+  // 3.1.1 difficulty (chosen on the difficulty screen): enemy/boss HP + damage and crystal multipliers
+  G.DIFFS = { easy: { hp: 0.7, dmg: 0.6, cr: 0.7 }, normal: { hp: 1, dmg: 1, cr: 1 }, hard: { hp: 1.5, dmg: 1.4, cr: 1.5 }, nightmare: { hp: 2.3, dmg: 2.0, cr: 2.5 } };
+  G.diff = 'normal';
+  G.diffMul = () => G.DIFFS[G.diff] || G.DIFFS.normal;
   G.start = (loadout) => {
+    if (loadout && loadout.diff && G.DIFFS[loadout.diff]) G.diff = loadout.diff;
     const st = normStats(sys('computeStats'));
+    st.crMult *= G.diffMul().cr;
     let cons = loadout && loadout.consumables ? loadout.consumables : sys('runConsumables') || [];
     cons = cons.slice(0, 3).map(c => (typeof c === 'string' ? { id: c, count: 3 } : { id: c.id, count: Math.min(3, c.count != null ? c.count : (c.n || 0)) }));
     const R = G.run = X.R = {
@@ -635,7 +641,7 @@
     const cards = Object.keys(R.cards).filter(id => R.cards[id] > 0).map(id => { const c = cardList().find(x => x.id === id) || { id, max: 1 }; return { id, lvl: R.cards[id], max: c.max, r: cardR(c), special: !!c.special }; });
     return {
       hp: Math.max(0, Math.round(p.hp)), maxHp: R.maxHp, shd: Math.round(p.shd), maxShd: R.maxShd,
-      atk: Math.round(E.atk), dps: Math.round(dps * critF), crit: E.crit, critDmg: E.critMult || 2, vamp: m.vamp || 0,
+      atk: Math.round(E.shot), atkBase: Math.round(E.atk), rate: +(E.rate * shots).toFixed(1), dps: Math.round(dps * critF), crit: E.crit, critDmg: E.critMult || 2, vamp: m.vamp || 0,
       speed: +(st.speed * m.speed).toFixed(2), magnet: Math.round(st.magnet * (1 + m.magnet)), dashCd: +(st.dashCd * m.dashCd).toFixed(2),
       guns: E.guns, pierce: E.pierce, regen: +(st.regen * m.shdRegen).toFixed(2),
       runLvl: R.runLvl, runXp: Math.floor(R.runXp), runNeed: R.runNeed, time: Math.floor(R.time), kills: R.kills, score: R.score, cards,

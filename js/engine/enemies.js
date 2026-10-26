@@ -58,7 +58,8 @@
   const top = (e) => (X.safeTop ? X.safeTop() : 26) + (e.size || 16) * 0.5;
   const band = (e, y, span) => U.clamp(y, top(e), Math.max(top(e), Math.min(top(e) + span, X.G.H * 0.62)));
   EN.top = top;
-  const scale = (sector) => (NC.DATA && NC.DATA.sectorScale ? NC.DATA.sectorScale(sector) : { hp: 1 + 0.08 * Math.min(sector, 10), dmg: 1 + 0.05 * Math.min(sector, 10) });
+  const scale0 = (sector) => (NC.DATA && NC.DATA.sectorScale ? NC.DATA.sectorScale(sector) : { hp: 1 + 0.08 * Math.min(sector, 10), dmg: 1 + 0.05 * Math.min(sector, 10) });
+  const scale = (sector) => { const s = scale0(sector), d = (NC.game && NC.game.diffMul && NC.game.diffMul()) || { hp: 1, dmg: 1 }; return Object.assign({}, s, { hp: s.hp * d.hp, dmg: s.dmg * d.dmg }); };
 
   // spawn(type, {x,y,elite,parent}) ; returns enemy or null when the 20 cap is reached
   EN.spawn = (type, o = {}) => {
