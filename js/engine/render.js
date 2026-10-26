@@ -180,6 +180,10 @@
     for (const b of R.bullets) {
       if (b.kind === 'flame') { A.draw(g, b.spr, b.x, b.y, Math.floor((1 - b.life / b.ml) * 3)); continue; }
       if (b.col && !A.has(b.spr)) { P.rect(g, b.x - 1, b.y - 3, 2, 5, b.col); continue; }
+      if (b.kind === 'missile') { // nose points along the flight direction (sprite faces up)
+        const s = A.get(b.spr); if (s && s.img) { g.save(); g.translate(Math.round(b.x), Math.round(b.y)); g.rotate(Math.atan2(b.vy, b.vx) + Math.PI / 2);
+          const fw = s.w, fh = s.h; g.drawImage(s.img, 0, 0, fw, fh, -Math.round(fw / 2), -Math.round(fh / 2), fw, fh); g.restore(); continue; }
+      }
       A.draw(g, b.spr, b.x, b.y, 0, { flipY: b.vy > 30 });
     }
     for (const r of R.rails) { const x2 = r.x + Math.cos(r.ang) * r.len, y2 = r.y + Math.sin(r.ang) * r.len; g.globalAlpha = r.life / r.ml; P.line(g, r.x, r.y, x2, y2, r.evo ? '#fee761' : '#feae34', 3); P.line(g, r.x, r.y, x2, y2, '#ffffff', 1); g.globalAlpha = 1; }

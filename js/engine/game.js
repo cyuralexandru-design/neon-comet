@@ -5,7 +5,7 @@
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = NC.fx, EN = NC.enemies, B = NC.bosses, W = NC.weapons;
-  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.1.2', hudTop: 22 };
+  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.1.3', hudTop: 22 };
   X.G = G;
   // HUD safe line (logical px): HUD agent sets NC.game.hudTop = bottom of the top HUD; nothing rests above hudTop + 4
   X.safeTop = () => { const h = +G.hudTop; return U.clamp(isFinite(h) && h > 0 ? h : 22, 0, G.H * 0.3) + 4; };
