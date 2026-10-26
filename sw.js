@@ -1,7 +1,7 @@
 // Neon Comet service worker: caches the whole game so it runs fully offline.
 // Saves live in localStorage and are never touched by updates.
 // Release: bump VERSION, run python3 tools/release/gen_sw.py if files changed, commit, push.
-const VERSION = 'neon-comet-v13';
+const VERSION = 'neon-comet-v14';
 const ASSETS = [
   './',
   './manifest.webmanifest',

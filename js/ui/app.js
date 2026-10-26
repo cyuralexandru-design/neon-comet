@@ -413,9 +413,9 @@
     try { // installed app, portrait: the window is the whole screen; some browsers report a stale smaller height at launch
       const fs = !!document.fullscreenElement || matchMedia('(display-mode: fullscreen)').matches;
       const iosApp = navigator.standalone === true && /iPhone|iPod/.test(navigator.userAgent);
-      if ((fs || iosApp) && !isLand() && screen && screen.width && screen.height) {
+      if ((fs || iosApp || (coarse() && /iPhone|iPod|Android/.test(navigator.userAgent))) && !isLand() && screen && screen.width && screen.height) {
         const sh = Math.max(screen.width, screen.height);
-        if (sh > h && sh - h <= Math.max(48, h * 0.12)) h = sh;
+        if (sh > h && sh - h <= Math.max(60, h * 0.14)) h = sh;
       }
     } catch (e) {}
     return { w: Math.max(1, Math.round(w)), h: Math.max(1, Math.round(h)) };
