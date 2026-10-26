@@ -5,7 +5,7 @@
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = NC.fx, EN = NC.enemies, B = NC.bosses, W = NC.weapons;
-  const G = NC.game = { mode: 'menu', W: 200, H: 420, run: null, fps: 60, version: '4.0.1', hudTop: 22, hudBottom: 0 };
+  const G = NC.game = { mode: 'menu', W: 200, H: 420, run: null, fps: 60, version: '4.0.3', hudTop: 22, hudBottom: 0 };
   X.G = G;
   // HUD safe line (logical px): HUD agent sets NC.game.hudTop = bottom of the top HUD; nothing rests above hudTop + 4
   // 4.0 bottom safe zone (logical px from the bottom edge) for the touch buttons: pickups rest above it, player stays mostly above
@@ -635,6 +635,8 @@
   };
 
   // ------------------------------------------------------------ end of run
+  // 4.0.2: summary ores = picked up in run + end-of-run reward (sys keys 'ore_x' -> 'x')
+  function oreSum(a, b) { const o = Object.assign({}, a); for (const k of Object.keys(b || {})) { const id = k.replace(/^ore_/, ''); o[id] = (o[id] || 0) + (b[k] | 0); if (!o[id]) delete o[id]; } return o; }
   function endRun(show) {
     const R = G.run; if (!R) return null;
     if (R.story && X.storyEnd) return X.storyEnd(false, show);
@@ -644,7 +646,7 @@
     const s = G.lastSummary = {
       score: R.score, best: res.best != null ? res.best : R.score, isBest: !!res.isBest, kills: R.kills, sector: R.sector, bosses: R.bossesKilled,
       combo: R.maxCombo, crystals: R.crystals, xp: res.xpGain != null ? res.xpGain : Math.round(R.xp * R.st.xpMult), lvlBefore: res.lvlBefore || R.lvlBefore, lvlAfter: res.lvlAfter || R.lvlBefore,
-      time: Math.round(R.time), chests: R.chests.slice(), ores: Object.assign({}, R.ores), revives: R.revives, shipId: R.st.shipId, consumablesUsed: Object.assign({}, R.consUsed),
+      time: Math.round(R.time), chests: R.chests.slice(), ores: oreSum(R.ores, res.ores), revives: R.revives, shipId: R.st.shipId, consumablesUsed: Object.assign({}, R.consUsed),
     };
     U.ui('hideBossBar'); U.music('menu');
     if (show) { U.sfx('gameover'); U.ui('showGameOver', s); }

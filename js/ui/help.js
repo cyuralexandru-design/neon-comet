@@ -42,6 +42,7 @@
       card(t('help.play.cards.t'), esc(t('help.play.cards.d')), img('card_dmg')) +
       card(t('help.play.revive.t'), esc(t('help.play.revive.d', { n: (d.REVIVE && d.REVIVE.max) || 3 })), img('pk_repair')) +
       card(t('help.play.hangar.t'), esc(t('help.play.hangar.d')), img('chest_1')) +
+      card(t('help.play.story.t'), esc(t('help.play.story.d')), img('mode_story')) +
       card(t('help.play.events.t'), esc(t('help.play.events.d', { list: evs })), img('pk_supernova'));
   };
   B.controls = () => {
@@ -76,10 +77,10 @@
       [0, 1, 2, 3, 4].map(r => `<div class="hp-rar" style="--rc:${rcol(r)}"><b>${esc(t('rarity.' + r))}</b><small>${esc(t('help.rar.chance', { p: Math.round(W[r] / tot * 100) }))}</small><span>${esc(t('help.rar.' + r))}</span></div>`).join('') + '</div>';
     h += card(t('help.cards.how.t'), esc(t('help.cards.how.d'))) +
       card(t('help.cards.reroll.t'), esc(t('help.cards.reroll.d', { a: d.rerollCost ? d.rerollCost(1) : 50, b: d.rerollCost ? d.rerollCost(2) : 100, c: d.rerollCost ? d.rerollCost(3) : 200 }))) +
-      card(t('help.cards.evo.t'), esc(t('help.cards.evo.d', { n: 8 })));
+      card(t('help.cards.evo.t'), esc(t('help.cards.evo.d', { n: (d.CARDS || []).filter(c => c && c.id && /^evo_/.test(c.id)).length })));
     const cs = (d.CARDS || []).filter(c => c && c.id);
     if (cs.length) {
-      h += `<h3 class="hp-h">${esc(t('help.cards.all'))}</h3><div class="hp-grid">` + cs.map(c => {
+      h += `<h3 class="hp-h">${esc(t('help.cards.all', { n: cs.length }))}</h3><div class="hp-grid">` + cs.map(c => {
         const r = c.r || 0, ico = c.sprite || ('card_' + c.id);
         return `<div class="hp-chip" data-f data-a="card" data-id="${esc(c.id)}" style="--rc:${rcol(r)}">${img(ico, 'ico24')}<span>${esc(tx('card.' + c.id + '.name', null, c.id))}</span><small>${esc(t('help.cards.max', { n: c.max || 1 }))}</small></div>`;
       }).join('') + '</div>';
@@ -93,6 +94,9 @@
       card(t('help.h.wpn.t'), esc(t('help.h.wpn.d', { list: list(d.WEAPONS, w => 'wpn.' + w.id + '.name') })), img('pk_star')) +
       card(t('help.h.tur.t'), esc(t('help.h.tur.d'))) + card(t('help.h.comp.t'), esc(t('help.h.comp.d')), img('comp_orb')) +
       card(t('help.h.gear.t'), esc(t('help.h.gear.d', { list: list(d.GEAR_SLOTS, 'nameKey') }))) +
+      card(t('help.h.lvl.t'), esc(t('help.h.lvl.d')), img('ore_armor', 'ico24')) +
+      card(t('help.h.ore.t'), esc(t('help.h.ore.d', { list: list(d.ORES, 'nameKey') })), img('ore_weapon', 'ico24')) +
+      card(t('help.h.var.t'), esc(t('help.h.var.d')), img('gear_armor_titan', 'ico24')) +
       card(t('help.h.sets.t'), esc(t('help.h.sets.d')) + '<br>' + esc(list(d.SETS, 'nameKey'))) +
       card(t('help.h.merge.t'), esc(t('help.h.merge.d'))) + card(t('help.h.sell.t'), esc(t('help.h.sell.d'))) +
       card(t('help.h.chest.t'), esc(t('help.h.chest.d')) + '<br><i>' + esc(t('help.h.pity', { n: 10 })) + '</i>', img('chest_3')) +

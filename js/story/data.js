@@ -152,7 +152,7 @@
   };
 
   const clues = {};
-  for (let i = 1; i <= 6; i++) clues['c' + i] = { id: 'c' + i, titleKey: 'story.clue.c' + i + '.t', textKey: 'story.clue.c' + i, icon: 'ui_clue' };
+  for (let i = 1; i <= 6; i++) clues['c' + i] = { id: 'c' + i, titleKey: `story.clue.c${i}.t`, textKey: `story.clue.c${i}`, icon: 'ui_clue' };
 
   NC.STORY = { chapters, crew, crewOrder: CREW_ORDER, crewScale: CREW_SCALE, items, itemById, slots: SLOTS, rmult: RMULT, itemMaxLvl, itemCost, itemSell, itemSellOre, crewItemMult, dialogs, clues,
     starRules: { two: 0.5, three: 0.8 }, chestStars: [10, 20, 30],

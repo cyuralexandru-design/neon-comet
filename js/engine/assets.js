@@ -152,12 +152,15 @@
       return A.hdCache[id] = { img, w: fw, h: fh, frames, fps: d.fps || 0, lw: fw * k, lh: fh * k, anchor: [fw / 2, fh / 2], url: A.hdBase + d.file, id, hd: true };
     });
   }
+  A.HD_ALIAS = { en_scrap: 'en_hulk_scrap', en_tmine: 'en_mine', fx_spark: 'fx_hit' };
   A.preload = (ids) => Promise.all((ids || []).filter(id => A.hdMan[id]).map(loadHd));
   const EAGER = /^(ship_|boss_|en_|mboss_|ore_|pk_|proj_|eb_|fx_|chest_\d|tur_|comp_|sec_\w+_(obj|proj)|sec_mine)/;
   async function loadHdManifest() {
     const m = await fetchJson(A.hdUrl); if (!m || typeof m !== 'object') return;
     const map = m.sprites && typeof m.sprites === 'object' ? m.sprites : m;
     for (const [id, d] of Object.entries(map)) if (d && d.file) A.hdMan[id] = d;
+    // 4.0.2: ids drawn by the engine that have HD art under another name
+    for (const [a, b] of Object.entries(A.HD_ALIAS)) if (!A.hdMan[a] && A.hdMan[b]) A.hdMan[a] = A.hdMan[b];
     await Promise.all(Object.keys(A.hdMan).filter(id => EAGER.test(id)).map(loadHd));
   }
   A.has = (id) => !!(A.hdCache[id] || (A.cache[id] && !A.cache[id].placeholder));

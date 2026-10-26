@@ -41,7 +41,7 @@
       for (const sl of D().GEAR_SLOTS) {
         const slot = sl.id || sl, cur = g.eq[slot];
         if (cur && g.items.some(i => i.id === cur && i.slot === slot)) continue;
-        if (!cur && g.eqFix40) continue;   // user unequipped on purpose after the one-time fix
+        if (!cur && g.uneq && g.uneq[slot]) continue;   // 4.0.2: only an explicit unequip keeps a slot empty (eqFix40 blocked later auto-equip)
         const it = g.items.find(i => i.slot === slot && i.v);
         g.eq[slot] = it ? it.id : null;
       }
@@ -180,14 +180,14 @@
   sys.equip = (kind, id) => {
     if (kind === 'gear') {
       const it = sys.item(id); if (!it) return fail('sys.err.notOwned');
-      S.gear.eq[it.slot] = it.id; persist(); return ok({ slot: it.slot });
+      S.gear.eq[it.slot] = it.id; if (S.gear.uneq) delete S.gear.uneq[it.slot]; persist(); return ok({ slot: it.slot });
     }
     if (!BUCKET[kind]) return fail('sys.err.invalid');
     if (id == null) { if (!OPTIONAL[kind]) return fail('sys.err.invalid'); S[BUCKET[kind]].eq = null; persist(); return ok(); }
     if (!sys.owned(kind, id)) return fail('sys.err.notOwned');
     S[BUCKET[kind]].eq = id; persist(); return ok();
   };
-  sys.unequipGear = (slot) => { if (!(slot in S.gear.eq)) return fail('sys.err.invalid'); S.gear.eq[slot] = null; persist(); return ok(); };
+  sys.unequipGear = (slot) => { if (!(slot in S.gear.eq)) return fail('sys.err.invalid'); S.gear.eq[slot] = null; (S.gear.uneq = S.gear.uneq || {})[slot] = 1; persist(); return ok(); };
   sys.isEquipped = (itemId) => Object.values(S.gear.eq).includes(itemId);
 
   // =====================================================================
@@ -216,7 +216,7 @@
   // equipVariant(cat, id): equips the owned item of that variant
   sys.equipVariant = (cat, id) => {
     const it = S.gear.items.find(i => i.slot === cat && i.v === id); if (!it) return fail('sys.err.notOwned');
-    S.gear.eq[cat] = it.id; persist(); return ok({ slot: cat, item: it.id });
+    S.gear.eq[cat] = it.id; if (S.gear.uneq) delete S.gear.uneq[cat]; persist(); return ok({ slot: cat, item: it.id });
   };
   sys.lockItem = (uid, on) => { const it = sys.item(uid); if (!it) return fail('sys.err.notOwned'); it.lock = on == null ? !it.lock : !!on; persist(); return ok({ lock: it.lock }); };
 
@@ -278,7 +278,7 @@
     const cons = {};
     for (let i = 0; i < c.cons; i++) { const k = d.CONSUMABLES[Math.floor(rand() * d.CONSUMABLES.length)].id; cons[k] = (cons[k] || 0) + 1; }
     for (const k of Object.keys(cons)) S.cons[k] = Math.min(d.CONS_STOCK_MAX, S.cons[k] + cons[k]);
-    S.stats.chestsOpened++; track('chestsOpened', 1); persist();
+    S.stats.chestsOpened++; track('chestsOpened', 1); ensureGearEq(); persist();
     return ok({ rarity: r, items: items.filter(i => !i.dup), dups: items.filter(i => i.dup), all: items, ores, crystals: cr, cons, pity, pityCount: S.pity });
   };
 

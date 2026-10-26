@@ -82,7 +82,7 @@
     const wd = R.wdef, evoMul = 1 + 0.08 * (R.cards['evo_' + st.weapon.id] || 0) + (R.evolved ? 0.25 : 0);
     const over = (R.buffs.over > 0 ? 1.6 : 1) * (R.skRateT > 0 ? R.skRate || 1 : 1);
     const od = m.overdrive && R.p && R.p.hp < (R.maxHp || 1) * ((m.fx.overdrive && m.fx.overdrive.below) || 0.35) ? 1 + m.overdrive : 1; // card overdrive
-    const oc = m.sp && m.sp.overcharge ? (m.sp.overcharge.dmg || 1.25) : 1;
+    const ocd = m.sp && m.sp.overcharge ? +m.sp.overcharge.dmg || 0.25 : 0, oc = ocd && R.buffs.over > 0 ? (ocd < 1 ? 1 + ocd : ocd) : 1; // 4.0.2: data dmg 0.30 = +30%, only while active
     return {
       shot: st.atk * m.dmg * wd.dmg * st.weapon.mult * evoMul * od * oc,
       atk: st.atk * m.dmg * od * oc,

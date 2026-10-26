@@ -365,7 +365,7 @@
     // sector label (under Lv)
     const sn = Math.max(1, h.sector || sec.n || 1), bk = biomeKey(h.biome || sec.biome);
     let ss = null; try { ss = NC.game && NC.game.storyState ? NC.game.storyState() : null; } catch (e) { ss = null; }
-    if (ss) setT(E.sec, 'sec', t('hud.storyLv', { id: ss.id }) + ' · ' + (ss.phase === 'waves' || !ss.phase ? t('hud.wave', { w: Math.max(1, Math.min(ss.wave, ss.waves)), n: ss.waves }) : t('hud.al.boss')));
+    if (ss) setT(E.sec, 'sec', t('hud.storyLv', { id: ss.id }) + ' · ' + (ss.phase === 'waves' || !ss.phase || (ss.phase === 'win' && !ss.boss) ? t('hud.wave', { w: Math.max(1, Math.min(ss.wave, ss.waves)), n: ss.waves }) : t('hud.al.boss')));
     else setT(E.sec, 'sec', t('hud.sec', { n: sn }) + (bk && hasT(bk) ? ' · ' + t(bk) : ''));
     // score + combo
     setT(E.score, 'score', num(h.score || 0));

@@ -344,5 +344,5 @@
     tetherBeams(R);
   };
   X.storyHud = () => { const R = X.R; return (R.ab || []).map(a => ({ id: a.id, cd01: a.max ? U.clamp(a.cd / a.max, 0, 1) : 0, active: a.act > 0, ready: a.cd <= 0 })); };
-  G.storyState = () => { const R = G.run; if (!R || !R.story) return null; const S = R.story; return { id: S.id, wave: S.wi + 1, waves: S.waves.length, phase: S.phase, queued: S.queue.length, foes: liveFoes(R), done: S.done }; };
+  G.storyState = () => { const R = G.run; if (!R || !R.story) return null; const S = R.story; return { id: S.id, wave: S.wi + 1, waves: S.waves.length, phase: S.phase, boss: !!S.lvl.boss, queued: S.queue.length, foes: liveFoes(R), done: S.done }; };
 })(window.NC = window.NC || {});

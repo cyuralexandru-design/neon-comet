@@ -7,7 +7,7 @@
     // home
     'menu.help': 'Ajutor',
     'menu.helpSoon': 'Ecranul de ajutor nu este disponibil inca',
-    'menu.version': 'v3.1',
+    'menu.version': 'v4.0',
     'menu.xp': '{a} / {b} XP',
     'menu.chests': 'Cufere',
     // shared row states
@@ -79,7 +79,7 @@
   Object.assign(NC.I18N.en, {
     'menu.help': 'Help',
     'menu.helpSoon': 'The help screen is not available yet',
-    'menu.version': 'v3.1',
+    'menu.version': 'v4.0',
     'menu.xp': '{a} / {b} XP',
     'menu.chests': 'Chests',
     'menu.reward': 'Reward',

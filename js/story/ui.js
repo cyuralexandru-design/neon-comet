@@ -270,27 +270,51 @@
 
   // ------------------------------------------------------------------ dialog player
   // UI.storyDialog(id, onDone): NC.STORY.dialogs[id] = [{who, textKey, panel?}]. Tap = next, Skip = end. Back/Circle = skip.
+  // speech-balloon text over the manga art: rects from assets/hd/manga_balloons.json, texts from manga_text.json
+  const MB = { ok: false, b: {}, t: {} };
+  (function loadMB() {
+    const base = UI.HD_BASE || 'assets/hd/';
+    Promise.all([fetch(base + 'manga_balloons.json').then(r => r.json()), fetch(base + 'manga_text.json').then(r => r.json())])
+      .then(([b, tx]) => { MB.b = b; MB.t = tx; MB.ok = true; }).catch(() => {});
+  })();
+  const balloons = (pg) => {
+    const n = String(pg).split('_').pop(), rs = MB.b[n] || [], tx = (MB.t[NC.lang] || MB.t.ro || {})[n] || [];
+    return rs.map((r, k) => tx[k] ? `<div class="sd-bal" style="left:${r[0] * 100}%;top:${r[1] * 100}%;width:${r[2] * 100}%;height:${r[3] * 100}%"><span>${esc(tx[k])}</span></div>` : '').join('');
+  };
+  const fitBalloons = (root) => {
+    root.querySelectorAll('.sd-bal').forEach(b => {
+      const sp = b.firstElementChild; let f = Math.max(9, Math.min(18, b.clientHeight * 0.34));
+      sp.style.fontSize = f + 'px';
+      while (f > 7 && (sp.scrollHeight > b.clientHeight * 0.78 || sp.scrollWidth > sp.clientWidth + 1)) { f -= 0.5; sp.style.fontSize = f + 'px'; }
+    });
+  };
   UI.storyDialog = (id, onDone) => {
     const pages = (MANGA[id] || []).map(n => 'manga_1_' + n).filter(hdu);
-    const lines = pages.map(p => ({ manga: p })).concat(((ST().dialogs || {})[id] || []).filter(Boolean));
+    const dl = ((ST().dialogs || {})[id] || []).filter(Boolean);
+    // manga page stays on screen as background while its dialog lines are shown on top (text over the manga)
+    // 4.0.3: manga pages carry the dialog inside their own white balloons; dialog box only when a scene has no manga
+    const lines = pages.length && MB.ok ? pages.map(p => ({ manga: p })) : dl;
     let i = 0, done = false;
     const fin = () => { if (done) return; done = true; if (UI.modals.includes(m)) UI.closeModal(m, true); try { onDone && onDone(); } catch (e) { console.error(e); } };
     if (!lines.length) { done = true; try { onDone && onDone(); } catch (e) { console.error(e); } return null; }
     const who = w => (w && (ST().crew || {})[w] || CREW.includes(w) ? cName(w) : tk('sui.who.' + w, tk('story.who.' + w, w || t('sui.who.unknown'))));
     const build = () => {
       const L = lines[i], w = L.who || '', right = i % 2 === 1 && w !== 'kael';
-      if (L.manga) return `<div class="sd-manga">${hdTag(L.manga, 'sd-mimg')}<small class="sd-h">${esc(t('sui.tap'))} · ${i + 1}/${lines.length}</small>
+      if (L.manga) return `<div class="sd-manga"><div class="sd-mp">${hdTag(L.manga, 'sd-mimg')}${balloons(L.manga)}</div><small class="sd-h">${esc(t('sui.tap'))} · ${i + 1}/${lines.length}</small>
         <div class="sd-acts"><button class="btn mut sm" data-f data-a="skip">${esc(t('sui.skip'))}</button><button class="btn pri sm" data-f data-first data-a="next">&gt;</button></div></div>`;
       const bs = bust(w, L.mood || L.emote || 'neutral');
       const pp = bs ? `<span class="st-port sd-p sd-bust">${hdTag(bs)}</span>` : port(w, 'sd-p');
       const panel = L.panel ? `<div class="sd-panel">${has(L.panel) ? big(L.panel) : ''}</div>` : '<div class="sd-panel empty"></div>';
-      return `<div class="sd-wrap">${panel}<div class="sd-box ${right ? 'rt' : ''}${hdu('dialog_box') ? ' hdbox' : ''}"${hdu('dialog_box') ? ` style="--dbox:url('${esc(hdu('dialog_box'))}')"` : ''}>${pp}
+      const bgm = L.bg ? `<div class="sd-mbg">${hdTag(L.bg, 'sd-mimg')}</div>` : '';
+      return `${bgm}<div class="sd-wrap${L.bg ? ' on-manga' : ''}">${L.bg ? '' : panel}<div class="sd-box ${right ? 'rt' : ''}${hdu('dialog_box') ? ' hdbox' : ''}"${hdu('dialog_box') ? ` style="--dbox:url('${esc(hdu('dialog_box'))}')"` : ''}>${pp}
         <div class="sd-tx"><b class="sd-n">${esc(who(w))}</b><p>${esc(tk(L.textKey, L.text || L.textKey || ''))}</p><small class="sd-h">${esc(t('sui.tap'))} · ${i + 1}/${lines.length}</small></div></div>
         <div class="sd-acts"><button class="btn mut sm" data-f data-a="skip">${esc(t('sui.skip'))}</button><button class="btn pri sm" data-f data-first data-a="next">&gt;</button></div></div>`;
     };
-    const next = () => { if (done) return; sfx('click'); i++; if (i >= lines.length) return fin(); m.innerHTML = build(); UI.refocus && UI.refocus(true); };
+    const next = () => { if (done) return; sfx('click'); i++; if (i >= lines.length) return fin(); m.innerHTML = build(); requestAnimationFrame(() => fitBalloons(m)); UI.refocus && UI.refocus(true); };
     const m = UI.modal(build(), { cls: 'sd-modal', dismiss: false, back: fin, on: (a) => { if (a === 'skip') fin(); else next(); } });
     m.addEventListener('click', e => { if (!e.target.closest('[data-a]')) next(); });
+    requestAnimationFrame(() => fitBalloons(m)); setTimeout(() => fitBalloons(m), 300);
+    m.querySelectorAll('img').forEach(im => im.addEventListener('load', () => fitBalloons(m), { once: true }));
     return m;
   };
 

@@ -110,8 +110,10 @@
   .title-x { font-weight: 800; font-size: var(--fs-xl); letter-spacing: 0.2em; text-transform: uppercase; }
 
   /* ---------------------------------------------------------------- stage */
-  html, body { background-color: #05070b; min-height: 100%; }
-  body:not(.col) { background-color: var(--bg); }
+  /* iOS 26 Safari / Home-Screen app: the band under the home indicator lies outside the fixed-position viewport and is painted
+     with the ROOT (html) background, not the stage. It used to be #05070b -> visible black strip. Root = stage colour on phones. */
+  html, body { background-color: var(--bg); min-height: 100%; }
+  html:has(body.col), body.col { background-color: #05070b; }
   body.col { background: radial-gradient(ellipse at 50% 40%, #0d121b 0, #05070b 70%) #05070b; }
   #stage { position: fixed; left: 0; top: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; contain: layout paint;
     background-color: var(--bg); background-image: var(--space), var(--stars); background-size: 100% 100%, 100% 100%, var(--starsz); }

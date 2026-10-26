@@ -419,6 +419,7 @@
           <div class="ov-pnl ov-cut ov-ov-r"><div class="ov-sh"><b>${esc(t('ov.over.details'))}</b></div>
             <div class="ov-kv">${rows.map(([k, v, c]) => `<div style="--sc:var(--${c})"><span class="k">${esc(t(k))}</span><b class="v">${esc(v)}</b></div>`).join('')}</div>
             ${chests.length ? `<div class="ov-chrow"><span class="k">${esc(t('ov.over.chests'))}</span><span class="v">${chests.slice(0, 8).map(r => `<span class="ov-chi">${hdi('chest_' + clampR(r), '')}</span>`).join('')}${chests.length > 8 ? `<b>+${chests.length - 8}</b>` : ''}</span></div>` : ''}
+            ${oresRow(s.ores)}
           </div>
         </div>
         <div class="ov-acts">${hints([['ok', 'ov.hint.select'], ['back', 'ov.over.menu']])}<span class="sp"></span>
