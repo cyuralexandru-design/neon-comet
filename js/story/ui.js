@@ -9,9 +9,15 @@
   const esc = s => (UI.esc ? UI.esc(String(s == null ? '' : s)) : String(s == null ? '' : s));
   const fmt = n => (UI.fmt ? UI.fmt(n) : String(Math.round(n || 0)));
   const sfx = n => { try { UI.sfx && UI.sfx(n); } catch (e) {} };
-  const has = id => { try { return !!(NC.assets && NC.assets.has && NC.assets.has(id)); } catch (e) { return false; } };
-  const img = (id, cls) => (UI.img ? UI.img(id, cls || 'ico24') : '');
-  const big = (id, cls) => (UI.bigImg ? UI.bigImg(id, cls || '') : '');
+  // 4.0: HD painted art (UI.hd) preferred everywhere, old sprites as fallback
+  const hdu = id => { try { return (UI.hd && UI.hd(id)) || null; } catch (e) { return null; } };
+  const hdTag = (id, cls) => `<img class="hd ${cls || ''}" src="${esc(hdu(id))}" alt="" draggable="false">`;
+  const has = id => { if (hdu(id)) return true; try { return !!(NC.assets && NC.assets.has && NC.assets.has(id)); } catch (e) { return false; } };
+  const img = (id, cls) => (hdu(id) ? hdTag(id, cls || 'ico24') : UI.img ? UI.img(id, cls || 'ico24') : '');
+  const big = (id, cls) => (hdu(id) ? hdTag(id, cls) : UI.bigImg ? UI.bigImg(id, cls || '') : '');
+  // SPEC-40 §5: manga pages shown full-screen before the dialog lines
+  const MANGA = { d_1_1a: [1, 2], d_1_2a: [3], d_1_5a: [4], d_1_5b: [5], d_1_8a: [6], d_1_10a: [7, 8], d_1_10b: [9] };
+  const bust = (w, mood) => { for (const m of [mood, 'neutral']) if (m && hdu('portrait_' + w + '_' + m)) return 'portrait_' + w + '_' + m; return null; };
   const tk = (key, fb, v) => (key && (!NC.hasT || NC.hasT(key)) ? t(key, v) : fb);
   const ST = () => NC.STORY || {};
   const SY = () => (NC.story && NC.story.sys) || null;
@@ -123,7 +129,8 @@
   };
 
   // ------------------------------------------------------------------ chapter level path
-  const PATH = i => ({ x: 6 + i * 9.8, y: [72, 40, 64, 30, 50, 74, 42, 66, 32, 52][i % 10] });
+  // 4.0 portrait: vertical path, level 1 at the bottom, zigzag left/right
+  const PATH = i => ({ y: 94 - i * 9.6, x: [50, 26, 62, 78, 46, 22, 54, 76, 40, 50][i % 10] });
   UI.screens.storyCh = {
     cls: 'dim story',
     render(el, st) {
@@ -132,7 +139,7 @@
       const pts = L.map((l, i) => PATH(i));
       el.innerHTML = head(t('sui.ch', { n: c.idx + 1 }) + ' · ' + chName(c), starChip(chStars(c), L.length * 3) +
         `<button class="btn sec sm" data-f data-a="crew">${esc(t('sui.crew'))}</button>`) +
-        `<div class="pnl st-path st-w-${esc(c.world)}"><svg class="st-line" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${pts.map(p => p.x + ',' + p.y).join(' ')}"/></svg>
+        `<div class="pnl st-path st-w-${esc(c.world)}"${hdu('bg_' + c.world) ? ` style="background-image:linear-gradient(rgba(11,14,20,.55),rgba(11,14,20,.75)),url('${esc(hdu('bg_' + c.world))}')"` : ''}><svg class="st-line" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${pts.map(p => p.x + ',' + p.y).join(' ')}"/></svg>
         ${L.map((l, i) => {
           const s = lvState(l.id), open = lvOpen(c, i), p = pts[i], bt = l.boss ? l.boss.type : '';
           return `<button class="st-node ${open ? 'open' : 'lock'}${s.done ? ' done' : ''}${bt ? ' b-' + bt : ''}" data-f data-a="lv" data-id="${esc(l.id)}"${i === first ? ' data-first' : ''} style="left:${p.x}%;top:${p.y}%">
@@ -264,15 +271,20 @@
   // ------------------------------------------------------------------ dialog player
   // UI.storyDialog(id, onDone): NC.STORY.dialogs[id] = [{who, textKey, panel?}]. Tap = next, Skip = end. Back/Circle = skip.
   UI.storyDialog = (id, onDone) => {
-    const lines = ((ST().dialogs || {})[id] || []).filter(Boolean);
+    const pages = (MANGA[id] || []).map(n => 'manga_1_' + n).filter(hdu);
+    const lines = pages.map(p => ({ manga: p })).concat(((ST().dialogs || {})[id] || []).filter(Boolean));
     let i = 0, done = false;
     const fin = () => { if (done) return; done = true; if (UI.modals.includes(m)) UI.closeModal(m, true); try { onDone && onDone(); } catch (e) { console.error(e); } };
     if (!lines.length) { done = true; try { onDone && onDone(); } catch (e) { console.error(e); } return null; }
     const who = w => (w && (ST().crew || {})[w] || CREW.includes(w) ? cName(w) : tk('sui.who.' + w, tk('story.who.' + w, w || t('sui.who.unknown'))));
     const build = () => {
       const L = lines[i], w = L.who || '', right = i % 2 === 1 && w !== 'kael';
+      if (L.manga) return `<div class="sd-manga">${hdTag(L.manga, 'sd-mimg')}<small class="sd-h">${esc(t('sui.tap'))} · ${i + 1}/${lines.length}</small>
+        <div class="sd-acts"><button class="btn mut sm" data-f data-a="skip">${esc(t('sui.skip'))}</button><button class="btn pri sm" data-f data-first data-a="next">&gt;</button></div></div>`;
+      const bs = bust(w, L.mood || L.emote || 'neutral');
+      const pp = bs ? `<span class="st-port sd-p sd-bust">${hdTag(bs)}</span>` : port(w, 'sd-p');
       const panel = L.panel ? `<div class="sd-panel">${has(L.panel) ? big(L.panel) : ''}</div>` : '<div class="sd-panel empty"></div>';
-      return `<div class="sd-wrap">${panel}<div class="sd-box ${right ? 'rt' : ''}">${port(w, 'sd-p')}
+      return `<div class="sd-wrap">${panel}<div class="sd-box ${right ? 'rt' : ''}${hdu('dialog_box') ? ' hdbox' : ''}"${hdu('dialog_box') ? ` style="--dbox:url('${esc(hdu('dialog_box'))}')"` : ''}>${pp}
         <div class="sd-tx"><b class="sd-n">${esc(who(w))}</b><p>${esc(tk(L.textKey, L.text || L.textKey || ''))}</p><small class="sd-h">${esc(t('sui.tap'))} · ${i + 1}/${lines.length}</small></div></div>
         <div class="sd-acts"><button class="btn mut sm" data-f data-a="skip">${esc(t('sui.skip'))}</button><button class="btn pri sm" data-f data-first data-a="next">&gt;</button></div></div>`;
     };

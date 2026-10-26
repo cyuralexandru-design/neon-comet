@@ -1,5 +1,5 @@
 'use strict';
-// Neon Comet 3.1.3 - hidden AUTO card pick. On the level-up cards screen there is an invisible button bottom-right;
+// Neon Comet 4.0 - hidden AUTO card pick. On the level-up cards screen there is an invisible button bottom-right;
 // 5 quick taps toggle auto mode (toast "Auto activat"/"Auto dezactivat"). From run level 3 on, auto picks the best card.
 (function (NC) {
   const UI = NC.ui = NC.ui || {};
@@ -27,10 +27,11 @@
   }
   function addButton() {
     const host = document.querySelector('[data-a="pick"]'); if (!host) return;
-    const scr = host.closest('.scr, .screen, [class*="cards"]') || document.getElementById('screens');
+    const scr = host.closest('.ov-cardsx, .scr, .screen, [class*="cards"]') || document.getElementById('screens');
     if (!scr || scr.querySelector('.nc-autobtn')) return;
     const b = document.createElement('div'); b.className = 'nc-autobtn';
-    b.style.cssText = 'position:fixed;right:5%;bottom:3%;width:13%;height:13%;min-width:90px;min-height:50px;z-index:50;background:transparent;';
+    // 4.0 portrait: invisible hot zone in the bottom-right corner of the cards screen (below/beside the reroll row)
+    b.style.cssText = 'position:absolute;right:0;bottom:0;width:22%;height:9%;min-width:72px;min-height:56px;z-index:50;background:transparent;';
     b.addEventListener('pointerdown', (ev) => {
       ev.stopPropagation(); ev.preventDefault();
       const now = Date.now(); if (now - tapT > 2500) taps = 0; tapT = now; taps++;

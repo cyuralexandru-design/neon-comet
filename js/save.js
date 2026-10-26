@@ -1,8 +1,9 @@
 'use strict';
-// Neon Comet 3.0 - save storage, backup, migration v3 -> v4, export/import (SYSTEMS agent).
+// Neon Comet 4.0 - save storage, backup, migration v3 -> v4 -> v5 (4.0 items rework), export/import (DATA agent).
+// v5 key 'neonComet.v5'. On first 4.0 load the v4 save is copied untouched to 'neonComet.v4.pre5' and v4 keys are never written again.
 // API: NC.store (low level). Game code should use NC.sys.load()/save() instead.
 (function (NC) {
-  const KEY = 'neonComet.v4', BAK = 'neonComet.v4.bak', V3 = 'neonComet.v3', V3BAK = 'neonComet.v3.bak';
+  const KEY = 'neonComet.v5', BAK = 'neonComet.v5.bak', V4 = 'neonComet.v4', V4BAK = 'neonComet.v4.bak', V4PRE = 'neonComet.v4.pre5', V3 = 'neonComet.v3', V3BAK = 'neonComet.v3.bak';
   const D = () => NC.DATA;
   const ls = () => { try { return (typeof localStorage !== 'undefined') ? localStorage : null; } catch (e) { return null; } };
 
@@ -16,7 +17,9 @@
     stars: 0, maxSector: 0, merges: 0, sold: 0, upgrades: 0, consUsed: 0, cards: 0, evos: 0, missions: 0, dashes: 0, events: 0, bestTime: 0,
   });
   const defaultSave = () => ({
-    v: 4, crystals: 0, best: 0, xp: 0,
+    v: 5, crystals: 0, best: 0, xp: 0,
+    cat: { ship: 1, weapon: 1, secondary: 1, turret: 1, comp: 1, armor: 1, gen: 1, core: 1, boost: 1, crew: 1 },   // 4.0 category levels 1..150
+    ores: { ore_armor: 0, ore_gen: 0, ore_core: 0, ore_boost: 0, ore_weapon: 0, ore_secondary: 0, ore_turret: 0, ore_companion: 0, ore_ship: 0, ore_crew: 0 },
     ships: { eq: 'vanator', lv: { vanator: 1 } },           // owned = keys of lv, value = upgrade level
     weapons: { eq: 'laser', lv: { laser: 1 } },
     turrets: { eq: null, lv: {} },
@@ -50,16 +53,11 @@
     const d = D();
     s.crystals = Math.max(0, Math.floor(num(s.crystals))); s.best = Math.max(0, num(s.best)); s.xp = Math.max(0, num(s.xp));
     const clampLv = (obj, list, maxFn) => { for (const k of Object.keys(obj)) { const def = list.find(x => x.id === k); if (!def) continue; obj[k] = NC.clamp(Math.floor(num(obj[k], 1)), 1, maxFn(def)); } };
-    // 3.3: every kind goes to level 50; existing levels are kept (old caps were lower), tiers are derived from levels
-    const MAXL = () => d.MAX_LVL || 50;
-    clampLv(s.ships.lv, d.SHIPS, MAXL);
-    clampLv(s.weapons.lv, d.WEAPONS, MAXL);
-    clampLv(s.turrets.lv, d.TURRETS, MAXL);
-    clampLv(s.comps.lv, d.COMPANIONS, MAXL);
+    // 4.0: ownership = keys of <kind>.lv (value kept at 1); the level lives in s.cat (per category)
+    const own = (obj, list) => { for (const k of Object.keys(obj)) { if (!list.some(x => x.id === k)) { delete obj[k]; continue; } obj[k] = 1; } };
     if (!s.secondary || typeof s.secondary !== 'object' || Array.isArray(s.secondary)) s.secondary = { eq: null, lv: {} };
     if (!s.secondary.lv || typeof s.secondary.lv !== 'object') s.secondary.lv = {};
-    clampLv(s.secondary.lv, d.SECONDARY || [], MAXL);
-    for (const k of Object.keys(s.secondary.lv)) if (!(d.SECONDARY || []).some(x => x.id === k)) delete s.secondary.lv[k];
+    own(s.ships.lv, d.SHIPS); own(s.weapons.lv, d.WEAPONS); own(s.turrets.lv, d.TURRETS); own(s.comps.lv, d.COMPANIONS); own(s.secondary.lv, d.SECONDARY || []);
     if (s.secondary.eq && !s.secondary.lv[s.secondary.eq]) s.secondary.eq = null;
     if (!s.ships.lv.vanator) s.ships.lv.vanator = 1;
     if (!s.weapons.lv.laser) s.weapons.lv.laser = 1;
@@ -67,9 +65,19 @@
     if (!s.weapons.lv[s.weapons.eq]) s.weapons.eq = 'laser';
     if (s.turrets.eq && !s.turrets.lv[s.turrets.eq]) s.turrets.eq = null;
     if (s.comps.eq && !s.comps.lv[s.comps.eq]) s.comps.eq = null;
+    if (!s.cat || typeof s.cat !== 'object') s.cat = {};
+    for (const c of d.CATS.concat('crew')) s.cat[c] = NC.clamp(Math.floor(num(s.cat[c], 1)), 1, d.MAX_LVL);
+    for (const k of Object.keys(s.cat)) if (!(k in d.CAT_ORE)) delete s.cat[k];
+    if (!s.ores || typeof s.ores !== 'object') s.ores = {};
+    for (const o of d.ORES) s.ores[o.id] = Math.max(0, Math.floor(num(s.ores[o.id])));
+    for (const k of Object.keys(s.ores)) if (!d.ORES.some(o => o.id === k)) delete s.ores[k];
     if (!Array.isArray(s.gear.items)) s.gear.items = [];
     s.gear.items = s.gear.items.filter(it => it && it.id && d.GEAR_SLOTS.some(x => x.id === it.slot));
-    for (const it of s.gear.items) { it.r = NC.clamp(Math.floor(num(it.r)), 0, 4); it.lvl = NC.clamp(Math.floor(num(it.lvl, 1)), 1, d.GEAR.maxLvl(it.r)); it.q = num(it.q, 1); if (!Array.isArray(it.ex)) it.ex = []; }
+    for (const it of s.gear.items) {
+      let vd = d.gearVariant(it.slot, it.v); if (!vd) { vd = d.gearVariant(it.slot, oldVariant(it)); it.v = vd.id; }
+      it.set = vd.set; it.nameKey = vd.nameKey; it.lock = !!it.lock; it.lvl = s.cat[it.slot]; it.r = 0;
+      delete it.q; delete it.ex;
+    }
     for (const sl of Object.keys(s.gear.eq)) { const it = s.gear.items.find(i => i.id === s.gear.eq[sl]); if (!it || it.slot !== sl) s.gear.eq[sl] = null; }
     if (!Array.isArray(s.chests)) s.chests = [0, 0, 0, 0, 0];
     while (s.chests.length < 5) s.chests.push(0);
@@ -151,21 +159,66 @@
     s.crystals += refund + gearRefund;
     rep.refund = refund; rep.gearRefund = gearRefund; rep.crystals = s.crystals;
     s.migration = rep;
+    s.v = 4; return s;   // 4.0: v4-shaped; callers run migrateV4 next
+  }
+
+  // ---------- v4 -> v5 (SPEC-40 §3) ----------
+  // old gear item -> nearest variant of the same slot (strongest old extra stat decides, D.GEAR_MIGRATE)
+  function oldVariant(it) {
+    const m = D().GEAR_MIGRATE[it.slot] || {}; let best = null, bq = -1;
+    for (const e of (Array.isArray(it.ex) ? it.ex : [])) if (e && m[e.id] && num(e.q, 1) > bq) { bq = num(e.q, 1); best = m[e.id]; }
+    return best || m._ || D().GEAR_VARIANTS[it.slot][0].id;
+  }
+  const mapLvl = (old, oldMax) => NC.clamp(Math.round(1 + (Math.max(1, num(old, 1)) - 1) * (D().MAX_LVL - 1) / ((oldMax || D().OLD_MAX_LVL) - 1)), 1, D().MAX_LVL);
+  function migrateV4(o) {
+    const d = D(), s = fill(defaultSave(), o), rep = { from: 4, cat: {}, gearKept: 0, gearToOre: 0, ores: {} };
+    s.v = 5;
+    const oldTier = (r, l) => Math.max(r | 0, Math.min(4, Math.floor(num(l, 1) / 10)));
+    const maxOf = (lv) => Object.values(lv || {}).reduce((a, b) => Math.max(a, num(b, 1)), 1);
+    s.cat = { ship: mapLvl(maxOf(o.ships && o.ships.lv)), weapon: mapLvl(maxOf(o.weapons && o.weapons.lv)), turret: mapLvl(maxOf(o.turrets && o.turrets.lv)),
+      comp: mapLvl(maxOf(o.comps && o.comps.lv)), secondary: mapLvl(maxOf(o.secondary && o.secondary.lv)), armor: 1, gen: 1, core: 1, boost: 1, crew: 1 };
+    // gear: category level = max(mapped level, first level of the old tier) so the rarity look is kept; one item per variant, rest -> ore
+    const items = Array.isArray(o.gear && o.gear.items) ? o.gear.items : [], eq = (o.gear && o.gear.eq) || {}, keep = {}, out = [];
+    const eqIds = new Set(Object.values(eq));
+    const sorted = items.filter(it => it && it.id && d.GEAR_VARIANTS[it.slot]).sort((a, b) => (eqIds.has(b.id) - eqIds.has(a.id)) || (oldTier(b.r, b.lvl) - oldTier(a.r, a.lvl)) || (num(b.lvl) - num(a.lvl)));
+    for (const it of sorted) {
+      const L = Math.max(mapLvl(it.lvl), d.CAT_TIER_AT[oldTier(it.r, it.lvl)]);
+      s.cat[it.slot] = Math.max(s.cat[it.slot], L);
+      const v = oldVariant(it), k = it.slot + '.' + v;
+      if (keep[k]) { const oid = d.CAT_ORE[it.slot], n = Math.round(d.DUP_ORE * (1 + oldTier(it.r, it.lvl))); s.ores[oid] += n; rep.ores[oid] = (rep.ores[oid] || 0) + n; rep.gearToOre++; if (eqIds.has(it.id)) s.gear.eq[it.slot] = keep[k]; continue; }
+      keep[k] = it.id; const vd = d.gearVariant(it.slot, v);
+      out.push({ id: it.id, slot: it.slot, v, set: vd.set, lock: false, nameKey: vd.nameKey, lvl: 1, r: 0 }); rep.gearKept++;
+    }
+    s.gear.items = out;
+    // crew items (story): category 'crew' = max item level mapped from the old max 25 scale
+    const st = o.story; if (st && Array.isArray(st.items)) for (const it of st.items) if (it) s.cat.crew = Math.max(s.cat.crew, mapLvl(it.lvl, 25));
+    rep.cat = Object.assign({}, s.cat);
+    s.migration = rep;
     return sanitize(s);
   }
 
+  // v3 -> v4 -> v5; report keeps the v3 fields (from:3, refund...) + v5: {cat, gearKept, gearToOre, ores}
+  function fromV3(o) { const m4 = migrateV3(o), r3 = m4.migration, m = migrateV4(m4); m.migration = Object.assign({}, r3, { v5: m.migration }); return m; }
+
   function parse(raw) { try { return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 
-  // returns { save, source: 'v4'|'backup'|'v3'|'v2'|'new', report }
+  // returns { save, source: 'v5'|'backup'|'v4'|'v3'|'v2'|'new', report }
   function load() {
     const L = ls();
     if (L) {
-      let s = parse(L.getItem(KEY)), src = 'v4';
-      if (!s || s.v !== 4) { s = parse(L.getItem(BAK)); src = 'backup'; }
-      if (s && s.v === 4) return { save: sanitize(fill(defaultSave(), s)), source: src, report: null };
+      let s = parse(L.getItem(KEY)), src = 'v5';
+      if (!s || s.v !== 5) { s = parse(L.getItem(BAK)); src = 'backup'; }
+      if (s && s.v === 5) return { save: sanitize(fill(defaultSave(), s)), source: src, report: null };
+      for (const k of [V4, V4BAK]) {
+        const raw = L.getItem(k), o = parse(raw);
+        if (o && o.v === 4) {
+          try { if (!L.getItem(V4PRE)) L.setItem(V4PRE, raw); } catch (e) {}   // untouched copy of the old save
+          const m = migrateV4(o); return { save: m, source: 'v4', report: m.migration };
+        }
+      }
       for (const k of [V3, V3BAK]) {
         const o = parse(L.getItem(k));
-        if (o && o.v === 3) { const m = migrateV3(o); return { save: m, source: 'v3', report: m.migration }; }
+        if (o && o.v === 3) { const m = fromV3(o); return { save: m, source: 'v3', report: m.migration }; }
       }
       const o2 = parse(L.getItem('neonComet.v2'));
       if (o2) { const s2 = defaultSave(); s2.best = num(o2.best); s2.crystals = Math.floor(num(o2.credits)); s2.migration = { from: 2, crystals: s2.crystals }; return { save: s2, source: 'v2', report: s2.migration }; }
@@ -189,15 +242,16 @@
   function sum(str) { let h = 7; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h.toString(36); }
   const b64e = str => (typeof btoa === 'function') ? btoa(unescape(encodeURIComponent(str))) : Buffer.from(str, 'utf8').toString('base64');
   const b64d = b64 => (typeof atob === 'function') ? decodeURIComponent(escape(atob(b64))) : Buffer.from(b64, 'base64').toString('utf8');
-  function exportCode(s) { const b = b64e(JSON.stringify(s)); return 'NC4-' + sum(b) + '-' + b; }
+  function exportCode(s) { const b = b64e(JSON.stringify(s)); return 'NC5-' + sum(b) + '-' + b; }
   // returns {ok:true, save, report} | {ok:false, err:i18nKey}
   function importCode(code) {
     code = String(code || '').replace(/\s+/g, '');
-    const m = code.match(/^NC([34])-([0-9a-z]+)-([A-Za-z0-9+/=]+)$/);
+    const m = code.match(/^NC([345])-([0-9a-z]+)-([A-Za-z0-9+/=]+)$/);
     if (!m || sum(m[3]) !== m[2]) return { ok: false, err: 'save.err.invalid' };
     let o; try { o = JSON.parse(b64d(m[3])); } catch (e) { return { ok: false, err: 'save.err.corrupt' }; }
-    if (o && o.v === 4) return { ok: true, save: sanitize(fill(defaultSave(), o)), report: null };
-    if (o && o.v === 3) { const s = migrateV3(o); return { ok: true, save: s, report: s.migration }; }
+    if (o && o.v === 5) return { ok: true, save: sanitize(fill(defaultSave(), o)), report: null };
+    if (o && o.v === 4) { const s = migrateV4(o); return { ok: true, save: s, report: s.migration }; }
+    if (o && o.v === 3) { const s = fromV3(o); return { ok: true, save: s, report: s.migration }; }
     return { ok: false, err: 'save.err.version' };
   }
   function reset(old) {
@@ -207,5 +261,5 @@
     return s;
   }
 
-  NC.store = { KEY, BAK, V3, defaultSave, defaultSettings, load, write, exportCode, importCode, reset, migrateV3, sanitize, fill };
+  NC.store = { KEY, BAK, V3, V4, V4PRE, migrateV4, mapLvl, defaultSave, defaultSettings, load, write, exportCode, importCode, reset, migrateV3, sanitize, fill };
 })(window.NC = window.NC || {});

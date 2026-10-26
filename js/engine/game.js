@@ -5,9 +5,11 @@
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = NC.fx, EN = NC.enemies, B = NC.bosses, W = NC.weapons;
-  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.3.0', hudTop: 22 };
+  const G = NC.game = { mode: 'menu', W: 200, H: 420, run: null, fps: 60, version: '4.0.0', hudTop: 22, hudBottom: 0 };
   X.G = G;
   // HUD safe line (logical px): HUD agent sets NC.game.hudTop = bottom of the top HUD; nothing rests above hudTop + 4
+  // 4.0 bottom safe zone (logical px from the bottom edge) for the touch buttons: pickups rest above it, player stays mostly above
+  X.safeBottom = () => { const h = +G.hudBottom; return G.H - U.clamp(isFinite(h) && h > 0 ? h : 0, 0, G.H * 0.25); };
   X.safeTop = () => { const h = +G.hudTop; return U.clamp(isFinite(h) && h > 0 ? h : 22, 0, G.H * 0.3) + 4; };
   const D = () => NC.DATA || {};
   const sys = (fn, ...a) => { try { if (NC.sys && typeof NC.sys[fn] === 'function') return NC.sys[fn](...a); } catch (e) { console.error('NC.sys.' + fn, e); } return undefined; };
@@ -86,7 +88,9 @@
     let cons = loadout && loadout.consumables ? loadout.consumables : sys('runConsumables') || [];
     cons = cons.slice(0, 3).map(c => (typeof c === 'string' ? { id: c, count: 3 } : { id: c.id, count: Math.min(3, c.count != null ? c.count : (c.n || 0)) }));
     const R = G.run = X.R = {
-      st, m: { dmg: 1, rate: 1, guns: 0, pierce: 0, bounce: 0, missile: 0, orbit: 0, shd: 1, shdRegen: 1, hp: 1, magnet: 0, speed: 1, dashCd: 1, crit: 0, vamp: 0 },
+      st, m: { dmg: 1, rate: 1, guns: 0, pierce: 0, bounce: 0, missile: 0, orbit: 0, shd: 1, shdRegen: 1, hp: 1, magnet: 0, speed: 1, dashCd: 1, crit: 0, vamp: 0,
+        explode: 0, burn: 0, freeze: 0, poison: 0, chain: 0, split: 0, giant: 0, armor: 0, dodge: 0, thorns: 0, crBonus: 0, xpB: 0, secondWind: 0, drones: 0, overdrive: 0, shdDelay: 1, sp: {}, fx: {} },
+      ores: {}, helpers: [], cardT: {},
       cards: {}, score: 0, combo: 1, comboT: 0, maxCombo: 1, kills: 0, crystals: 0, xp: 0, time: 0,
       runLvl: 1, runXp: 0, runNeed: xpFor(1), pendingCards: 0, rerollN: 0, offered: null,
       sector: 0, biome: BIOMES[0], bossIdx: 0, mbossIdx: 0, nextBoss: BOSS_EVERY(), nextMini: MINI_FIRST(), bossIntro: 0, bossesKilled: 0,
@@ -184,9 +188,11 @@
   X.damagePlayer = (dmg) => {
     const R = X.R, p = R.p;
     if (!p.alive || p.inv > 0 || p.dashT > 0 || R.buffs.shield > 0 || G.god) return false;
-    if (R.st.flags.evasion && Math.random() < R.st.flags.evasion) { F.pop(p.x, p.y - 12, '0', F.COL.dim); p.inv = 0.3; return false; }
-    p.shdT = 2.6;
-    if (p.shd > 0) { const a = Math.min(p.shd, dmg); p.shd -= a; dmg -= a; U.sfx('shield_hit'); F.ring(p.x, p.y, '#2ce8f5', 12, 0.25); }
+    if ((R.st.flags.evasion && Math.random() < R.st.flags.evasion) || (R.m.dodge && Math.random() < Math.min(0.4, R.m.dodge))) { F.pop(p.x, p.y - 12, '0', F.COL.dim); p.inv = 0.3; return false; }
+    if (R.m.armor) dmg *= 1 - Math.min(0.5, R.m.armor);
+    if (R.m.thorns && X.cardThorns) X.cardThorns(dmg);
+    p.shdT = 2.6 * (R.m.shdDelay || 1);
+    if (p.shd > 0) { const a = Math.min(p.shd, dmg); p.shd -= a; dmg -= a; U.sfx('shield_hit'); F.ring(p.x, p.y, '#2ce8f5', 12, 0.25); if (p.shd <= 0 && X.cardShieldBreak) X.cardShieldBreak(); }
     if (dmg > 0) {
       p.hp -= dmg; p.hurtT = 0.4; F.doFlash('#a22633', 0.25); F.doShake(3); U.sfx('hurt'); NC.Input.buzz(60, 0.7);
       F.burst(p.x, p.y, '#e43b44', 8, 60); R.combo = Math.max(1, Math.floor(R.combo / 2));
@@ -207,12 +213,12 @@
     for (let i = 0; i < n; i++) { const a = U.rnd(0, U.TAU), v = U.rnd(15, 45); R.items.push({ kind: 'xp', spr: 'pk_xp', v: value / n, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: U.rnd(0, 0.4), life: 20, home: !!home }); }
   };
   // boss death: every xp orb / crystal on screen flies to the player
-  function homeAll() { for (const it of X.R.items) if (it.kind === 'xp' || it.kind === 'cr') { it.home = true; it.life = Math.max(it.life || 0, 6); } }
+  function homeAll() { for (const it of X.R.items) if (it.kind === 'xp' || it.kind === 'cr' || it.kind === 'ore') { it.home = true; it.life = Math.max(it.life || 0, 6); } }
   const comboMult = () => 1 + 0.03 * (X.R.combo - 1); // combo cap 20 -> x1.57
   function addScore(base) { const R = X.R; R.score += Math.round(base * comboMult()); }
   function bumpCombo() { const R = X.R; R.combo = Math.min(20, R.combo + 1); R.comboT = 3; R.maxCombo = Math.max(R.maxCombo, R.combo); }
   function addXp(v) {
-    const R = X.R; R.xp += v; R.runXp += v;
+    const R = X.R; v *= 1 + (R.m.xpB || 0); R.xp += v; R.runXp += v;
     while (R.runXp >= R.runNeed) { R.runXp -= R.runNeed; R.runLvl++; R.runNeed = xpFor(R.runLvl); R.pendingCards++; }
   }
   function killEnemy(e) {
@@ -232,9 +238,35 @@
       const cap = (((D().HEAL || {}).vampPerSec) || 1) * R.maxHp; R.vampB = Math.min(cap * 2, (R.vampB || 0) + (R.time - (R.vampT || 0)) * cap); R.vampT = R.time;
       const h = Math.min(R.vampB, R.maxHp * R.m.vamp); R.vampB -= h; R.p.hp = Math.min(R.maxHp, R.p.hp + h);
     }
+    X.dropOre(e.x, e.y, e.elite ? 'elite' : 'enemy');
     F.explode(e.x, e.y, e.size, d.col);
     EN.onDeath(e);
   }
+
+  // ------------------------------------------------------------ 4.0 ore drops (SPEC-40 §3)
+  // NC.DATA.oreDrop(kind, sector, diff) -> [{type, n}] when data defines it; else NC.DATA.ORE_DROPS[kind] = {chance, n|[min,max]}
+  // (+ ORE_DROPS.types, sectorMul, diffMul), else the fallback below. kind: enemy | elite | mini | boss. type = category id
+  // (armor, gen, core, boost, weapon, secondary, turret, companion, ship; crew in story) -> NC.sys.addOre(type, n), sprite ore_<type>.
+  const ORE_TYPES = ['armor', 'gen', 'core', 'boost', 'weapon', 'secondary', 'turret', 'companion', 'ship'];
+  const ORE_FB = { enemy: { chance: 0.02, n: 1 }, elite: { chance: 0.35, n: [1, 2] }, mini: { chance: 1, n: [3, 5] }, boss: { chance: 1, n: [6, 10] } };
+  const ORE_DIFF = { easy: 0.7, normal: 1, hard: 1.4, nightmare: 2 };
+  X.dropOre = (x, y, kind, home) => {
+    const R = X.R; if (!R) return;
+    let list = null;
+    try { if (typeof D().oreDrop === 'function') list = D().oreDrop(kind, R.sector, G.diff, !!R.story); } catch (e) { list = null; }
+    if (!Array.isArray(list)) {
+      const OD = D().ORE_DROPS || {}, d = OD[kind] || ORE_FB[kind] || ORE_FB.enemy;
+      const types = R.story ? (OD.storyTypes || ['crew'].concat(ORE_TYPES)) : (OD.types || (Array.isArray(D().ORES) ? D().ORES.map(o => String(o.id || o).replace(/^ore_/, '')).filter(t => t !== 'crew') : ORE_TYPES));
+      const mul = (typeof OD.sectorMul === 'function' ? OD.sectorMul(R.sector) : 1 + 0.15 * Math.min(R.sector, 10)) * ((OD.diffMul || ORE_DIFF)[G.diff] || 1);
+      list = [];
+      if (Math.random() < Math.min(1, (d.chance != null ? d.chance : 1) * (kind === 'enemy' || kind === 'elite' ? mul : 1))) {
+        let n = Array.isArray(d.n) ? U.irnd(d.n[0], d.n[1]) : (d.n || 1); if (kind === 'mini' || kind === 'boss') n = Math.round(n * mul);
+        for (let i = 0; i < n; i++) { const t = U.pick(types); const ex = list.find(q => q.type === t); if (ex) ex.n++; else list.push({ type: t, n: 1 }); }
+      }
+    }
+    for (const q of list) { if (!q || !q.type || !(q.n > 0)) continue; const type = String(q.type).replace(/^ore_/, ''), a = U.rnd(0, U.TAU), v = U.rnd(20, 50);
+      R.items.push({ kind: 'ore', type, n: q.n, spr: 'ore_' + type, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 25, home: !!home }); }
+  };
 
   // ------------------------------------------------------------ boss flow
   function startBossIntro() {
@@ -258,6 +290,7 @@
     X.dropXp(b.x, b.y, 60 * (b.idx + 1), 8, true);
     homeAll();
     R.items.push({ kind: 'chest', r: def.chest != null ? def.chest : 1, x: b.x, y: b.y, vx: 0, vy: 20, t: 0 });
+    X.dropOre(b.x, b.y, 'boss', true);
     R.p.hp = Math.min(R.maxHp, R.p.hp + R.maxHp * (((D().HEAL || {}).bossKill) != null ? D().HEAL.bossKill : 0.5)); R.p.shd = R.maxShd;
     R.boss = null; R.bossIdx++; R.bossesKilled++; sys('track', 'bosses', 1);
     if (R.story) { U.ui('hideBossBar'); alert('bossDown', { id: def.id, nameKey: b.nameKey }); if (X.storyBossDown) X.storyBossDown(b); return; }
@@ -272,6 +305,7 @@
     F.explode(b.x, b.y, 48, def.col); F.anim('fx_explode_l', b.x, b.y);
     R.score += def.points || 2000; X.dropCrystals(b.x, b.y, (def.cr || 600) * R.st.crMult, 5, true); X.dropXp(b.x, b.y, 25, 5, true);
     R.items.push({ kind: 'chest', r: def.chest || 0, x: b.x, y: b.y, vx: 0, vy: 20, t: 0 });
+    X.dropOre(b.x, b.y, 'mini', true);
     R.mboss = null; sys('track', 'mbosses', 1); U.ui('hideBossBar');
     if (R.story && X.storyBossDown) X.storyBossDown(b);
   }
@@ -364,7 +398,7 @@
       }
       const k = Math.min(1, dt * 12); p.vx += (tx - p.vx) * k; p.vy += (ty - p.vy) * k;
     }
-    p.x = U.clamp(p.x + p.vx * dt, 8, G.W - 8); p.y = U.clamp(p.y + p.vy * dt, 12, G.H - 16);
+    p.x = U.clamp(p.x + p.vx * dt, 8, G.W - 8); p.y = U.clamp(p.y + p.vy * dt, 12, Math.max(G.H * 0.7, Math.min(G.H - 16, X.safeBottom() - 6)));
     // aim: ship always faces up; shots go up unless auto-aim / right stick
     const mode = s.aim || (s.ctrl === 'touch' || s.ctrl === 'gamepad' ? 'auto' : 'forward');
     let ta = -Math.PI / 2;
@@ -388,6 +422,7 @@
   }
   function die() {
     const R = X.R, p = R.p;
+    if (X.cardCheat && X.cardCheat()) return; // 4.0 cards: second wind / phoenix
     p.alive = false; p.hp = 0; R.dying = 1.2;
     F.explode(p.x, p.y, 64, '#2ce8f5'); F.doFlash('#ffffff', 0.5); F.hitstop = 0.15; NC.Input.buzz(300, 1); U.sfx('explode_l');
     R.stats.bossDeaths.push(R.boss ? 'boss' : 'field');
@@ -424,7 +459,7 @@
       it.t += dt; it.x += it.vx * dt; it.y += it.vy * dt; it.vx *= Math.pow(0.05, dt); it.vy *= Math.pow(0.05, dt);
       if (it.kind === 'xp') it.y += 11 * dt; // xp orbs drift towards the player's zone and rest at the bottom edge
       else if (it.kind !== 'chest' && it.kind !== 'cr') it.y += 6 * dt;
-      if (it.y > G.H - 5 && !it.home) it.y = G.H - 5;
+      { const yb = X.safeBottom() - 5; if (it.y > yb && !it.home) it.y = yb; }
       if (it.life != null && !it.home) { it.life -= dt; if (it.life <= 0) { it.dead = true; continue; } }
       if (!p.alive) continue;
       const d2 = U.d2(it.x, it.y, p.x, p.y), pull = it.home ? it.t > 0.25 : it.kind === 'chest' ? it.t > 0.8 : d2 < mag * mag || (it.kind === 'cr' && it.t > 1.2);
@@ -435,11 +470,12 @@
   }
   function collect(it) {
     const R = X.R, p = R.p;
-    if (it.kind === 'cr') { const v = Math.max(1, Math.round(it.v * (R.buffs.x2 > 0 ? (consDef('x2').mult || 2) : 1))); R.crystals += v; sys('addCrystals', v); U.sfx('pickup_crystal'); }
+    if (it.kind === 'cr') { const v = Math.max(1, Math.round(it.v * (1 + (R.m.crBonus || 0)) * (R.buffs.x2 > 0 ? (consDef('x2').mult || 2) : 1))); R.crystals += v; sys('addCrystals', v); U.sfx('pickup_crystal'); }
     else if (it.kind === 'xp') { addXp(it.v || 1); U.sfx('pickup_star', 1); }
     else if (it.kind === 'star') { bumpCombo(); addScore(30); addXp(1); sys('track', 'stars', 1); U.sfx('pickup_star', R.combo); F.burst(it.x, it.y, '#f2c46a', 4, 30, 0.3); }
     else if (it.kind === 'repair') { p.hp = Math.min(R.maxHp, p.hp + R.maxHp * (((D().HEAL || {}).repair) || 0.25)); U.sfx('repair'); F.burst(it.x, it.y, '#63c74d', 8, 40); }
     else if (it.kind === 'nova') { supernova(); }
+    else if (it.kind === 'ore') { R.ores[it.type] = (R.ores[it.type] || 0) + (it.n || 1); sys('addOre', it.type, it.n || 1); U.sfx('pickup_crystal'); F.burst(it.x, it.y, '#9fd0e8', 5, 30, 0.3); }
     else if (it.kind === 'chest') { R.chests.push(it.r); sys('addChest', it.r, 1); alert('chest', { r: it.r, nameKey: 'chest.' + it.r + '.name' }); U.sfx(it.r >= 3 ? 'legendary' : 'chest_open'); }
   }
   function supernova() {
@@ -491,6 +527,7 @@
     B.update(dt * es); targetsCache = null;
     updateRocks(dt); targetsCache = null;
     W.update(dt);
+    if (X.cardsStep) X.cardsStep(dt);
     W.updateBullets(dt);
     updateEnemyFire(dt * es);
     updateItems(dt);
@@ -510,7 +547,7 @@
   // card rarity (SPEC-31 §2.6): def.r from NC.DATA (data agent); fallback table; evo cards Legendary
   const CARD_R = { dmg: 0, rate: 0, heal: 0, speed: 0, magnet: 0, shield: 1, bounce: 1, missile: 1, crit: 1, pierce: 2, orbit: 2, vamp: 2, gun: 3 };
   const cardR = (c) => (typeof c.r === 'number' ? U.clamp(c.r | 0, 0, 4) : c.weapon ? 3 : (CARD_R[c.id] != null ? CARD_R[c.id] : 0));
-  const SPECIAL_OK = {}; // special cards (3.2) are offered only once their engine logic exists (none in 3.1)
+  const SPECIAL_OK = X.SPECIAL_OK = X.SPECIAL_OK || {}; // special cards are offered only once their engine logic exists (4.0: filled by X.applyCard section)
   const rarityW = () => { const w = D().CARD_RARITY_W; return Array.isArray(w) && w.length >= 5 ? w : [46, 28, 16, 8, 2]; };
   // offers: pick a rarity by weight (only rarities that still have available cards), then a card of that rarity by its w
   G.cardChoices = () => {
@@ -562,7 +599,7 @@
       case 'speed': m.speed += v; m.dashCd *= 0.88; break;
       case 'crit': m.crit += v; break;
       case 'vamp': m.vamp += v; break;
-      default: if (c.weapon && R.cards[id] >= c.max) { W.evolve(); sys('track', 'evos', 1); }
+      default: if (c.weapon) { if (R.cards[id] >= c.max) { W.evolve(); sys('track', 'evos', 1); } } else if (X.applyCard) X.applyCard(c, R.cards[id]);
     }
     sys('track', 'cards', 1); U.sfx('card');
     R.pendingCards = Math.max(0, R.pendingCards - 1);
@@ -607,7 +644,7 @@
     const s = G.lastSummary = {
       score: R.score, best: res.best != null ? res.best : R.score, isBest: !!res.isBest, kills: R.kills, sector: R.sector, bosses: R.bossesKilled,
       combo: R.maxCombo, crystals: R.crystals, xp: res.xpGain != null ? res.xpGain : Math.round(R.xp * R.st.xpMult), lvlBefore: res.lvlBefore || R.lvlBefore, lvlAfter: res.lvlAfter || R.lvlBefore,
-      time: Math.round(R.time), chests: R.chests.slice(), revives: R.revives, shipId: R.st.shipId, consumablesUsed: Object.assign({}, R.consUsed),
+      time: Math.round(R.time), chests: R.chests.slice(), ores: Object.assign({}, R.ores), revives: R.revives, shipId: R.st.shipId, consumablesUsed: Object.assign({}, R.consUsed),
     };
     U.ui('hideBossBar'); U.music('menu');
     if (show) { U.sfx('gameover'); U.ui('showGameOver', s); }
@@ -627,7 +664,7 @@
     h.consumables = R.cons.map(c => ({ id: c.id, count: c.count, cd01: c.max ? U.clamp(c.cd / c.max, 0, 1) : 0 }));
     h.boss = b ? { nameKey: b.nameKey, hp01: b.state !== 'enter' ? U.clamp(b.hp / b.max, 0, 1) : 1, mini: !b.big, segs: b.big ? B.PHASES : 1, phase: b.state !== 'enter' ? b.phase : 0, id: b.id } : null;
     h.crew = R.story && X.storyHud ? X.storyHud() : null;
-    h.buffs = Object.assign({}, R.buffs); h.event = R.event ? R.event.id : null; h.time = R.time; h.evolved = R.evolved; h.enemies = R.enemies.length;
+    h.ores = Object.assign({}, R.ores); h.buffs = Object.assign({}, R.buffs); h.event = R.event ? R.event.id : null; h.time = R.time; h.evolved = R.evolved; h.enemies = R.enemies.length;
   }
 
   // ------------------------------------------------------------ pause stats (SPEC-31 §2.5)
@@ -661,7 +698,8 @@
       atk: Math.round(E.shot), atkBase: Math.round(E.atk), rate: +(E.rate * shots).toFixed(1), dps: Math.round(dps * critF), crit: E.crit, critDmg: E.critMult || 2, vamp: m.vamp || 0,
       speed: +(st.speed * m.speed).toFixed(2), magnet: Math.round(st.magnet * (1 + m.magnet)), dashCd: +(st.dashCd * m.dashCd).toFixed(2),
       guns: E.guns, pierce: E.pierce, regen: +(st.regen * m.shdRegen).toFixed(2),
-      runLvl: R.runLvl, runXp: Math.floor(R.runXp), runNeed: R.runNeed, time: Math.floor(R.time), kills: R.kills, score: R.score, cards,
+      runLvl: R.runLvl, runXp: Math.floor(R.runXp), runNeed: R.runNeed, time: Math.floor(R.time), kills: R.kills, score: R.score, cards, ores: Object.assign({}, R.ores),
+      armor: m.armor || 0, dodge: m.dodge || 0,
     };
   };
 

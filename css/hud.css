@@ -1,4 +1,4 @@
-/* Neon Comet 3.1 - in-game HUD (agent hud). Palette B tokens from style.css (fallbacks = same palette values).
+/* Neon Comet 4.0 - in-game HUD, PORTRAIT (agent core; 3.1 base by agent hud, portrait overrides at the end). Palette B tokens from style.css.
    Sizes: --hs = CSS px per HUD unit (1 at 844x390, 0.9..1.8, set by js/ui/hud.js), --hpx = integer px per art px for pixel sprites.
    Roots get class .hx from hud.js (#hud, #bossBar, #touchUI, #fps) so these rules beat the old 3.0 HUD rules. */
 :root { --hs: 1px; --hpx: 2px; }
@@ -195,3 +195,77 @@ body.lefty #touchUI.hx .hx-tb.cons.c2 { right: auto; left: calc(var(--hs) * 14);
 @media (prefers-reduced-motion: reduce) {
   #hud.hx .hx-a .ic, #hud.hx .hx-bar.low { animation: none; }
 }
+
+/* =================================================================================================== 4.0 PORTRAIT
+   --hs = 1 at a 390x844 stage (0.85..1.6). Top bar = 3 columns; boss bar under it; touch cluster bottom-right arc. */
+#hud.hx .hx-top { position: absolute; left: var(--x-sl); right: var(--x-sr); top: var(--x-st); display: grid; grid-template-columns: 1fr auto 1fr; align-items: start;
+  column-gap: calc(var(--hs) * 6); }
+#hud.hx .hx-l, #hud.hx .hx-c, #hud.hx .hx-r { position: static; transform: none; left: auto; right: auto; top: auto; }
+#hud.hx .hx-l { min-width: 0; gap: calc(var(--hs) * 3); }
+#hud.hx .hx-pnl { display: flex; flex-direction: column; gap: calc(var(--hs) * 3); width: 100%; max-width: calc(var(--hs) * 170); padding: calc(var(--hs) * 5) calc(var(--hs) * 6) calc(var(--hs) * 10); }
+#hud.hx .hx-bar { height: calc(var(--hs) * 13); }
+#hud.hx .hx-bar.shd { height: calc(var(--hs) * 10); }
+#hud.hx .hx-bar > span { font-size: calc(var(--hs) * 10); right: calc(var(--hs) * 4); }
+#hud.hx .hx-bar.shd > span { font-size: calc(var(--hs) * 8.5); }
+/* XP: yellow-orange bar along the panel bottom */
+#hud.hx .hx-xp { left: calc(var(--hs) * 6); right: calc(var(--hs) * 6); bottom: calc(var(--hs) * 3); height: calc(var(--hs) * 5); border: 1px solid rgba(0, 0, 0, 0.5); }
+#hud.hx .hx-xp > i { background: linear-gradient(90deg, #e8c25a, var(--x-xp, #e09a3e)); box-shadow: 0 0 calc(var(--hs) * 5) rgba(224, 154, 62, 0.8); }
+#hud.hx .hx-sub { display: flex; align-items: baseline; gap: calc(var(--hs) * 6); padding-left: calc(var(--hs) * 2); white-space: nowrap; min-width: 0;
+  font-size: calc(var(--hs) * 10.5); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.1; text-shadow: var(--x-out); }
+#hud.hx .hx-sub .hx-lv { display: inline; width: auto; height: auto; background: none; border: 0; }
+#hud.hx .hx-sub .hx-lv small { font-size: inherit; color: var(--x-dim); }
+#hud.hx .hx-sub .hx-lv b { font-size: calc(var(--hs) * 12); margin: 0; color: var(--x-xp); }
+#hud.hx .hx-sub .hx-sec { font-size: inherit; padding: 0; overflow: hidden; text-overflow: ellipsis; }
+#hud.hx .hx-c { padding-top: calc(var(--hs) * 2); }
+#hud.hx .hx-score { font-size: calc(var(--hs) * 20); }
+#hud.hx .hx-combo { font-size: calc(var(--hs) * 10); }
+#hud.hx .hx-r { align-items: flex-end; justify-self: end; }
+#hud.hx .hx-rt { height: calc(var(--hs) * 32); }
+#hud.hx .hx-cr { padding: 0 calc(var(--hs) * 8) 0 calc(var(--hs) * 6); }
+#hud.hx .hx-cr b { font-size: calc(var(--hs) * 13); }
+#hud.hx .hx-pause { width: calc(var(--hs) * 32); height: calc(var(--hs) * 32); }
+#hud.hx .hx-pause.hdb { background: none; border: 0; clip-path: none; }
+#hud.hx .hx-pause.hdb img { width: 100%; height: 100%; object-fit: contain; }
+#hud.hx .hx-a .lb { max-width: calc(var(--hs) * 110); font-size: calc(var(--hs) * 10); }
+#hud.hx .hx-a .ic { width: calc(var(--hs) * 28); height: calc(var(--hs) * 28); }
+body.bossfight #hud.hx .hx-al { margin-top: calc(var(--hs) * 52); } /* keep alerts below the boss bar */
+#hud.hx img.hd { image-rendering: auto; filter: none; }
+
+/* boss bar: full width under the top bar */
+#bossBar.hx { left: var(--x-sl); right: var(--x-sr); width: auto; transform: none; top: calc(var(--x-st) + var(--hs) * 66); }
+#bossBar.hx .hx-bsegs { height: calc(var(--hs) * 8); }
+
+/* desktop / pad strip: bottom-left, unchanged look */
+
+/* touch: joystick zone = everything under the top HUD; cluster bottom-right (lefty mirrors) */
+#touchUI.hx #joy { top: 72%; left: 30%; }
+body.lefty #touchUI.hx #joy { left: 70%; }
+#touchUI.hx #joy.hdj, #touchUI.hx #joy i.hdk { background-size: 100% 100%; background-repeat: no-repeat; background-position: center; }
+#touchUI.hx #joy.hdj::before { display: none; }
+#touchUI.hx #joy i.hdk { background-color: transparent; border: 0; box-shadow: none; }
+#touchUI.hx .hx-tcl { width: calc(var(--hs) * 196); height: calc(var(--hs) * 196);
+  right: max(calc(var(--hs) * 12), calc(var(--sr, 0px) + calc(var(--hs) * 8))); bottom: max(calc(var(--hs) * 14), calc(env(safe-area-inset-bottom, 0px) + calc(var(--hs) * 6))); }
+#touchUI.hx .hx-tb.dash { width: calc(var(--hs) * 84); height: calc(var(--hs) * 84); }
+#touchUI.hx .hx-tb.hdb { background-color: transparent; background-size: 100% 100%; background-repeat: no-repeat; border-color: transparent; }
+#touchUI.hx .hx-tb.cons.c0 { right: calc(var(--hs) * 96); bottom: calc(var(--hs) * 6); }
+#touchUI.hx .hx-tb.cons.c1 { right: calc(var(--hs) * 80); bottom: calc(var(--hs) * 76); }
+#touchUI.hx .hx-tb.cons.c2 { right: calc(var(--hs) * 10); bottom: calc(var(--hs) * 96); }
+/* crew abilities: outer ring of the arc */
+#touchUI.hx .hx-tb.ab { width: calc(var(--hs) * 48); height: calc(var(--hs) * 48); border-color: var(--x-cyan); background-color: rgba(115, 185, 198, 0.1); }
+#touchUI.hx .hx-tb.ab img.hx-ci { width: calc(var(--hs) * 32); height: calc(var(--hs) * 32); border-radius: 50%; }
+#touchUI.hx .hx-tb.ab b { font-size: calc(var(--hs) * 18); color: var(--x-cyan); }
+#touchUI.hx .hx-tb.ab.rdy { box-shadow: 0 0 calc(var(--hs) * 8) rgba(115, 185, 198, 0.55); }
+#touchUI.hx .hx-tb.ab.act { border-color: var(--x-amber); box-shadow: 0 0 calc(var(--hs) * 10) var(--x-amber); }
+#touchUI.hx .hx-tb.ab.a0 { right: calc(var(--hs) * 150); bottom: calc(var(--hs) * 8); }
+#touchUI.hx .hx-tb.ab.a1 { right: calc(var(--hs) * 140); bottom: calc(var(--hs) * 100); }
+#touchUI.hx .hx-tb.ab.a2 { right: calc(var(--hs) * 72); bottom: calc(var(--hs) * 144); }
+body.lefty #touchUI.hx .hx-tcl { right: auto; left: max(calc(var(--hs) * 12), calc(env(safe-area-inset-left, 0px) + calc(var(--hs) * 8))); }
+body.lefty #touchUI.hx .hx-tb.cons.c0 { right: auto; left: calc(var(--hs) * 96); }
+body.lefty #touchUI.hx .hx-tb.cons.c1 { right: auto; left: calc(var(--hs) * 80); }
+body.lefty #touchUI.hx .hx-tb.cons.c2 { right: auto; left: calc(var(--hs) * 10); }
+body.lefty #touchUI.hx .hx-tb.ab.a0 { right: auto; left: calc(var(--hs) * 150); }
+body.lefty #touchUI.hx .hx-tb.ab.a1 { right: auto; left: calc(var(--hs) * 140); }
+body.lefty #touchUI.hx .hx-tb.ab.a2 { right: auto; left: calc(var(--hs) * 72); }
+/* the HUD cluster owns crew buttons on touch: hide story/ui.js's own row there (desktop keeps it) */
+body.touch #stAb { display: none !important; }
+@media (max-width: 360px) { #hud.hx .hx-score { font-size: calc(var(--hs) * 17); } #hud.hx .hx-cr b { font-size: calc(var(--hs) * 11); } }

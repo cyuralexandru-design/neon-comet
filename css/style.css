@@ -1,9 +1,11 @@
-/* Neon Comet 3.1 - base design system (agent core). Look = dev/design/hangar_ref.* (palette B, Oxanium, chamfered panels).
+/* Neon Comet 4.0 - base design system (agent core). PORTRAIT shell: #stage = 9:16-or-taller column (phone = full screen,
+   desktop = centred column max 480 px, body = dark side bars). HD art: .hd images smooth, .rf.hdf / .cf.hdf = HD rarity frames. Look = dev/design/hangar_ref.* (palette B, Oxanium, chamfered panels).
    CASCADE: everything here lives in two cascade layers: `base` (design system components) and `legacy` (old 3.0 screen
    rules, re-skinned, kept until each screen owner restyles). Screen files (hud/overlays/hangar/menus/help.css) are
    UNLAYERED, so their rules always win over this file regardless of selector specificity.
-   SCALE: --k = continuous UI scale (1 at 844x390 CSS px, set by UI.layout in js/ui/app.js, clamp 0.8..3).
-          --p = 1 reference px (= --k * 1px): write sizes as calc(var(--p) * N) with N = px in the 844x390 mockup.
+   SCALE: --k = continuous UI scale (1 at a 390x844 stage, = min(w/390, h/844), set by UI.layout in js/ui/app.js, clamp 0.8..3).
+          --p = 1 reference px (= --k * 1px): write sizes as calc(var(--p) * N) with N = px in the 390x844 mockup.
+          --stw / --sth = stage size in px (use instead of vw/vh: on desktop the stage is narrower than the window).
           --u = 2 * --p (legacy 3.0 unit, old rules use calc(var(--u) * N)); UI.u / UI.k are the JS numbers.
    COLOURS: use the tokens below, never hard-coded hex in screen files. */
 
@@ -108,9 +110,23 @@
   .title-x { font-weight: 800; font-size: var(--fs-xl); letter-spacing: 0.2em; text-transform: uppercase; }
 
   /* ---------------------------------------------------------------- stage */
-  #stage { position: fixed; left: 0; top: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden;
+  html, body { background-color: #05070b; }
+  body.col { background: radial-gradient(ellipse at 50% 40%, #0d121b 0, #05070b 70%) #05070b; }
+  #stage { position: fixed; left: 0; top: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; contain: layout paint;
     background-color: var(--bg); background-image: var(--space), var(--stars); background-size: 100% 100%, 100% 100%, var(--starsz); }
-  #c { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  body.col #stage { box-shadow: 0 0 0 1px var(--line), 0 0 60px rgba(0, 0, 0, 0.9); }
+  #c { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; image-rendering: auto; }
+  /* HD painted art: smooth scaling, never pixelated, not re-tinted */
+  img.hd, .hd img, img.logo-hd { image-rendering: auto; filter: none; }
+  .ico.hd { filter: none; object-fit: contain; }
+  /* painted UI kit (html.hd-<id> + --hd-<id> set by UI.hdKitVars when assets/hd has them; CSS look otherwise) */
+  html.hd-btn_pri .btn.pri, html.hd-btn_sec .btn.sec, html.hd-btn_back .btn.back { clip-path: none; border-color: transparent; background-color: transparent;
+    background-size: 100% 100%; background-repeat: no-repeat; }
+  html.hd-btn_pri .btn.pri { background-image: var(--hd-btn_pri); }
+  html.hd-btn_sec .btn.sec { background-image: var(--hd-btn_sec); }
+  html.hd-btn_back .btn.back { background-image: var(--hd-btn_back); }
+  html.hd-popup .modal > .pnl, html.hd-popup .icard { background: var(--hd-popup) center / 100% 100% no-repeat, var(--panel); }
+  .logo-hd { display: block; width: 100%; max-width: calc(var(--p) * 320); height: auto; margin: 0 auto; filter: drop-shadow(0 calc(var(--p) * 4) calc(var(--p) * 10) rgba(0, 0, 0, 0.6)); }
   .bg-space { background-color: var(--bg); background-image: var(--space), var(--stars); background-size: 100% 100%, 100% 100%, var(--starsz); }
 
   /* ---------------------------------------------------------------- chamfer */
@@ -264,6 +280,30 @@
   .rf.pad-focus, .pad-focus > .rf, .tile.pad-focus .rf, .slot.pad-focus .rf { border-color: var(--focus); filter: brightness(1.15); }
   .rf.sel { border-color: var(--focus); }
   .rf.dimmed { opacity: 0.4; }
+  /* HD rarity frame (UI.frame -> frame_r<n>): image overlay, art inset inside it, level band = pill on the bottom edge */
+  .rf.hdf { border: 0; clip-path: none; background: radial-gradient(circle at 50% 42%, var(--panel2) 0, #070a10 78%); overflow: visible; box-shadow: none; }
+  .rf.hdf > .rf-fr { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; image-rendering: auto; filter: none; }
+  .rf.hdf > .rf-art { inset: 13%; z-index: 1; }
+  .rf.hdf.has-lv > .rf-art { bottom: 18%; }
+  .rf.hdf > .rf-art > img, .rf.hdf > .rf-art > canvas, .rf.hdf > .rf-art > .ico { width: 92%; max-height: 100%; }
+  .rf.hdf .rf-lv { left: 22%; right: 22%; bottom: 2%; height: max(calc(var(--p) * 13), calc(var(--ts) * 0.2)); border: 1px solid var(--rc); background: rgba(5, 7, 11, 0.88);
+    color: var(--ink); z-index: 3; clip-path: none; font-size: max(calc(var(--p) * 9), calc(var(--ts) * 0.14)); }
+  .rf.hdf .rf-eq, .rf.hdf .rf-up, .rf.hdf .rf-set, .rf.hdf .rf-bd, .rf.hdf .rf-lk { z-index: 4; }
+  .rf.hdf .rf-eq { top: 6%; left: 6%; } .rf.hdf .rf-bd { top: 2%; right: 2%; }
+  .rf.hdf.locked > .rf-fr { filter: grayscale(0.85) brightness(0.6); }
+  .rf.hdf.sel, .rf.hdf.pad-focus, .pad-focus > .rf.hdf { filter: drop-shadow(0 0 calc(var(--p) * 5) var(--focus)) brightness(1.1); }
+  /* tall card (UI.cardFrame -> cardframe_r<n>), 2:3, width --cw */
+  .cf { --rc: var(--r0); --cw: calc(var(--p) * 150); position: relative; flex: 0 0 auto; width: var(--cw); aspect-ratio: 2 / 3; display: block;
+    background: var(--panel2); border: var(--bw) solid var(--rc); }
+  .cf.r1 { --rc: var(--r1); } .cf.r2 { --rc: var(--r2); } .cf.r3 { --rc: var(--r3); } .cf.r4 { --rc: var(--r4); } .cf.rn { --rc: var(--line2); }
+  .cf > .cf-art { position: absolute; inset: 8% 9% 30%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .cf > .cf-art > img { width: 100%; height: 100%; object-fit: cover; }
+  .cf.hdf { border: 0; background: radial-gradient(ellipse at 50% 35%, var(--panel2) 0, #070a10 80%); }
+  .cf.hdf > .cf-art { inset: 11% 13% 32%; }
+  .cf > .cf-fr { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; image-rendering: auto; }
+  .cf > .cf-t { position: absolute; left: 12%; right: 12%; top: 70%; z-index: 3; text-align: center; font-weight: 800; font-size: calc(var(--cw) * 0.095); line-height: 1.1;
+    text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink); text-shadow: 0 1px 0 var(--deep); }
+  .cf > .cf-s { position: absolute; left: 13%; right: 13%; top: 80%; bottom: 9%; z-index: 3; text-align: center; font-size: calc(var(--cw) * 0.075); line-height: 1.2; color: var(--ink2); overflow: hidden; }
 
   /* ---------------------------------------------------------------- progress bars */
   .bar { position: relative; height: calc(var(--p) * 8); background: var(--deep); border: 1px solid var(--line); overflow: hidden; }
@@ -380,20 +420,21 @@
   #loader.out { animation: loaderOut 0.35s ease forwards; }
   @keyframes loaderOut { to { opacity: 0; } }
 
-  #rotate { position: fixed; inset: 0; z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4vh;
-    padding: 8vw; text-align: center; background-color: var(--bg); background-image: var(--space), var(--stars); background-size: 100% 100%, 100% 100%, 120px 120px; }
-  @media (orientation: portrait) { #rotate { display: flex; } }
-  #rotate .rt { font-size: clamp(17px, 5.6vw, 28px); font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); line-height: 1.15; }
-  #rotate .rs { font-size: clamp(13px, 3.9vw, 18px); color: var(--dim); line-height: 1.35; max-width: 32ch; }
-  #rotate .ph { position: relative; width: min(46vw, 34vh); height: min(46vw, 34vh); display: grid; place-items: center; }
-  #rotate .ph .phone, #rotate .ph .phone-spr { transform-origin: 50% 50%; animation: rotLeft 2.8s ease-in-out infinite; }
-  #rotate .ph .phone { position: relative; width: 34%; height: 64%; border: max(3px, 1.4vw) solid var(--line2); border-radius: 12% / 7%; background: var(--deep);
-    box-shadow: 0 0 0 1px var(--deep), 0 0 4vw rgba(115, 185, 198, 0.12); }
+  /* rotate overlay (4.0: asks to hold the phone UPRIGHT). Only touch devices in landscape (body.rot-need from app.js). */
+  #rotate { position: fixed; inset: 0; z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 3vh;
+    padding: 6vh 8vw; text-align: center; background-color: var(--bg); background-image: var(--space), var(--stars); background-size: 100% 100%, 100% 100%, 120px 120px; }
+  body.rot-need #rotate { display: flex; }
+  @media (orientation: landscape) and (pointer: coarse) and (max-height: 639px) { body:not(.rot-ok) #rotate { display: flex; } }
+  #rotate .rt { font-size: clamp(17px, 6vh, 28px); font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); line-height: 1.15; }
+  #rotate .rs { font-size: clamp(13px, 4.2vh, 18px); color: var(--dim); line-height: 1.35; max-width: 40ch; }
+  #rotate .ph { position: relative; width: min(40vh, 30vw); height: min(40vh, 30vw); display: grid; place-items: center; }
+  #rotate .ph .phone { transform-origin: 50% 50%; animation: rotUp 2.8s ease-in-out infinite; position: relative; width: 34%; height: 64%;
+    border: max(3px, 1.4vh) solid var(--line2); border-radius: 12% / 7%; background: var(--deep); box-shadow: 0 0 0 1px var(--deep), 0 0 4vh rgba(115, 185, 198, 0.12); }
   #rotate .ph .phone::before { content: ''; position: absolute; inset: 6% 8% 12%; background: var(--cyan-d); animation: rotScr 2.8s ease-in-out infinite; }
   #rotate .ph .phone::after { content: ''; position: absolute; left: 50%; bottom: 3%; width: 14%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: var(--line2); }
-  #rotate .ph .phone-spr { height: 70%; width: auto; image-rendering: pixelated; filter: saturate(0.82); }
-  #rotate .ph .arr { position: absolute; left: 4%; top: 2%; width: 40%; height: 40%; color: var(--amber); animation: rotArr 2.8s ease-in-out infinite; }
-  @keyframes rotLeft { 0%, 18% { transform: rotate(0deg); opacity: 1; } 52%, 84% { transform: rotate(-90deg); opacity: 1; } 94% { transform: rotate(-90deg); opacity: 0; } 95% { transform: rotate(0deg); opacity: 0; } 100% { transform: rotate(0deg); opacity: 1; } }
+  #rotate .ph .arr { position: absolute; right: 4%; top: 2%; width: 40%; height: 40%; color: var(--amber); animation: rotArr 2.8s ease-in-out infinite; }
+  /* phone starts lying (landscape, -90deg) and turns upright */
+  @keyframes rotUp { 0%, 18% { transform: rotate(-90deg); opacity: 1; } 52%, 84% { transform: rotate(0deg); opacity: 1; } 94% { transform: rotate(0deg); opacity: 0; } 95% { transform: rotate(-90deg); opacity: 0; } 100% { transform: rotate(-90deg); opacity: 1; } }
   @keyframes rotScr { 0%, 40% { background: var(--cyan-d); } 55%, 90% { background: var(--cyan); } 100% { background: var(--cyan-d); } }
   @keyframes rotArr { 0%, 10% { opacity: 0.25; } 22%, 50% { opacity: 1; } 62%, 100% { opacity: 0.2; } }
 }

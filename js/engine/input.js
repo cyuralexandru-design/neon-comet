@@ -106,8 +106,8 @@
       }
       I.setDevice('touch');
       if (I.joy.active || inMenu()) return;
-      const p = loc(e), left = U.settings().hand === 'left';
-      const inside = left ? p.x > p.w * 0.4 : p.x < p.w * 0.6;
+      const p = loc(e);
+      const inside = p.y > p.h * 0.42; // 4.0 portrait: floating joystick anywhere on the lower half (buttons are HUD DOM on top)
       if (!inside) return;
       e.preventDefault();
       try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }

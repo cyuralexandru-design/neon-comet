@@ -206,7 +206,10 @@
     void R;
   }
   function spawnOne(q) {
-    const id = EN.DEFS[q.en] ? q.en : 'drone', s = EN.DEFS[id].size, W = G.W, H = G.H, i = q.i, n = q.n, mid = (n - 1) / 2;
+    const id = EN.DEFS[q.en] ? q.en : 'drone', s = EN.DEFS[id].size, W = G.W, H = G.H;
+    // 4.0 portrait: formations wider than the narrow screen wrap into rows (row r enters r*(s+8) px later)
+    const per = Math.max(2, Math.floor((W - s) / (s + 8))), wrapP = (q.pat === 'line' || q.pat === 'v' || q.pat === 'arc') && q.n > per;
+    const row = wrapP ? Math.floor(q.i / per) : 0, i = wrapP ? q.i % per : q.i, n = wrapP ? Math.min(per, q.n - row * per) : q.n, mid = (n - 1) / 2;
     const span = Math.min(W - 2 * s, Math.max(40, n * 26)), fx = (k) => W / 2 + (n > 1 ? (k / (n - 1) - 0.5) * span : 0);
     let o = null, enter = true, ey = -s / 2;
     switch (q.pat) {
@@ -219,7 +222,7 @@
       case 'stream': o = { x: q.sx != null ? q.sx : W * (0.25 + 0.5 * ((i * 0.37) % 1)) }; break;
       default: o = { x: U.rnd(s, W - s) }; ey = -s / 2 - U.rnd(0, 20);
     }
-    if (enter) o.y = ey;
+    if (enter) o.y = ey - row * (s + 8);
     o.x = U.clamp(o.x, s / 2, W - s / 2); o.elite = q.elite;
     const e = EN.spawn(id, o);
     if (!e) return false;

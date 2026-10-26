@@ -9,6 +9,9 @@
   const fmt = (n) => (UI.fmt ? UI.fmt(n) : String(Math.round(n)));
   // frame 0 only (animated strips must not show all frames), fixed box so it never overlaps text
   const img = (id, cls) => {
+    // 4.0: HD painted art first (UI.hd), old sprite strip as fallback
+    let hu = null; try { hu = UI.hd ? UI.hd(id) : null; } catch (e) {}
+    if (hu) { const bx = cls === 'ico16' ? 16 : cls === 'ico48' ? 64 : cls === 'ico32' ? 44 : 30; return `<span class="hp-ic hd ${cls || ''}" style="display:inline-block;flex:none;vertical-align:middle;width:${bx}px;height:${bx}px"><img src="${esc(hu)}" alt="" style="width:100%;height:100%;object-fit:contain" draggable="false"></span>`; }
     const a = NC.assets && NC.assets.get ? NC.assets.get(id) : null, url = UI.spriteUrl ? UI.spriteUrl(id) : '';
     const n = Math.max(1, (a && a.frames) || 1), w = (a && a.w) || 16, h = (a && a.h) || 16;
     const box = cls === 'ico16' ? 16 : 30, sc = Math.max(0.25, Math.min(box / w, box / h));

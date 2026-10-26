@@ -7,48 +7,36 @@
   const RD = NC.render = { k: 1, kb: 1, int: true, W: 320, H: 200, dpr: 1, cv: null, g: null, lo: null, lg: null, bgT: 0 };
   RD.TARGET_H = 200; RD.BAND = [192, 207];
 
+  // 4.0 PORTRAIT: logical width = TARGET_W (200), height = width x screen ratio (~400-460 on phones). The canvas renders at
+  // device resolution (DPR capped at DPR_CAP, 1 on quality 'low'); one logical px = RD.k device px (fractional), smoothing ON.
+  // Desktop / landscape hosts: the game is a centred 9:16 column (RD.col = {left, width, height} in CSS px).
+  RD.TARGET_W = 200; RD.DPR_CAP = 2.5; RD.col = { left: 0, width: 0, height: 0 };
   RD.init = (canvas) => {
     RD.cv = canvas; RD.g = canvas.getContext('2d');
-    RD.lo = document.createElement('canvas'); RD.lg = RD.lo.getContext('2d');
-    canvas.style.imageRendering = 'pixelated';
+    RD.lo = canvas; RD.lg = RD.g; // 3.x names kept (single canvas now)
+    canvas.style.imageRendering = 'auto';
     RD.resize();
     addEventListener('resize', RD.resize);
     if (window.ResizeObserver && canvas.parentElement) new ResizeObserver(RD.resize).observe(canvas.parentElement);
   };
-  // Scale rule (dh = screen height in device px):
-  //  1) if an integer k gives a logical height dh/k inside BAND [192..207] -> pixel-perfect integer scale (closest to 200);
-  //  2) otherwise logical height = 200 exactly with a fractional scale s = dh/200, rendered "sharp-bilinear": the low-res frame is
-  //     blown up by an INTEGER factor kb (nearest neighbour, crisp) into the backing canvas and the browser does the last tiny
-  //     (<= ~10-20%) smooth resample to the CSS size -> crisp pixels, no uneven pixel widths/shimmer, no big jumps between devices.
-  //  390@3x (1170) -> k6 int, H195 | 412@2.625x (1082) -> s5.41, H200 | 430@3x (1290) -> s6.45, H200 | 1080@1x -> s5.4, H200
-  //  1440@1x -> k7 int, H206 | 360@3x (1080) -> s5.4, H200 | 960@1x (windowed 1080p) -> k5 int, H192 | 2160@1x -> k11 int, H196
-  RD.pickScale = (dh) => {
-    // 3.1: target = what v3.0 showed on THIS device (k = floor(dh/180)) + 10%, so every screen sees ~10% more world
-    const oldH = dh / Math.max(1, Math.floor(dh / 180)), T = Math.max(RD.TARGET_H, oldH * 1.1), ks = dh / T; let best = 0, bd = 1e9;
-    for (const k of [Math.floor(ks), Math.ceil(ks)]) { if (k < 1) continue; const h = dh / k; if (h >= T * 0.97 && h <= T * 1.04 && Math.abs(h - T) < bd) { bd = Math.abs(h - T); best = k; } }
-    if (best) return { s: best, kb: best, int: true };
-    const s = Math.max(0.25, ks);
-    return { s, kb: Math.max(1, s >= 3 ? Math.floor(s) : Math.ceil(s)), int: false };
-  };
   RD.resize = () => {
     const cv = RD.cv; if (!cv) return;
     const host = cv.parentElement && cv.parentElement !== document.documentElement ? cv.parentElement.getBoundingClientRect() : { width: innerWidth, height: innerHeight };
-    const cw = Math.max(1, host.width || innerWidth), ch = Math.max(1, host.height || innerHeight);
-    const q = U.settings().quality; const dpr = Math.min(window.devicePixelRatio || 1, q === 'low' ? 1 : 4);
-    const dw = Math.round(cw * dpr), dh = Math.round(ch * dpr);
-    const sc = RD.pickScale(dh), s = sc.s, kb = sc.kb;
-    const W = Math.ceil(dw / s - 0.001), H = sc.int ? Math.ceil(dh / s) : Math.round(dh / s);
-    RD.k = s; RD.kb = kb; RD.int = sc.int; RD.W = W; RD.H = H; RD.dpr = dpr; RD.cssW = cw; RD.cssH = ch;
-    RD.lo.width = W; RD.lo.height = H;
-    cv.width = W * kb; cv.height = H * kb; // integer mode may exceed the screen by < k device px; CSS crops it
-    cv.style.width = (W * s / dpr) + 'px'; cv.style.height = (H * s / dpr) + 'px';
-    cv.style.imageRendering = sc.int || kb === s ? 'pixelated' : 'auto';
-    RD.g.imageSmoothingEnabled = false; RD.lg.imageSmoothingEnabled = false;
+    const pw = Math.max(1, host.width || innerWidth), ch = Math.max(1, host.height || innerHeight);
+    const cw = pw / ch > 0.6 ? Math.max(1, Math.min(pw, Math.round(ch * 9 / 16))) : pw; // wide host -> 9:16 column
+    const left = Math.round((pw - cw) / 2);
+    const q = U.settings().quality, dpr = Math.min(window.devicePixelRatio || 1, q === 'low' ? 1 : RD.DPR_CAP);
+    const W = RD.TARGET_W, H = Math.round(W * ch / cw), k = cw * dpr / W;
+    RD.k = k; RD.kb = k; RD.int = false; RD.W = W; RD.H = H; RD.dpr = dpr; RD.cssW = cw; RD.cssH = ch; RD.col = { left, width: cw, height: ch };
+    cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    cv.style.width = cw + 'px'; cv.style.height = ch + 'px'; cv.style.left = left + 'px'; cv.style.imageRendering = 'auto';
+    RD.g.imageSmoothingEnabled = true;
+    NC.assets.clearScaled && NC.assets.clearScaled();
     if (X.G) { X.G.W = W; X.G.H = H; }
     if (X.R && X.R.p) { X.R.p.x = U.clamp(X.R.p.x, 8, W - 8); X.R.p.y = U.clamp(X.R.p.y, 12, H - 16); }
   };
   // CSS px (relative to canvas) -> logical px
-  RD.toLogical = (x, y) => ({ x: x * RD.dpr / RD.k, y: y * RD.dpr / RD.k }); // works for integer and fractional k
+  RD.toLogical = (x, y) => ({ x: x * RD.dpr / RD.k, y: y * RD.dpr / RD.k });
   RD.toCss = (x, y) => ({ x: x * RD.k / RD.dpr, y: y * RD.k / RD.dpr });
 
   // ------------------------------------------------------------ backgrounds (4 parallax layers, procedural fallback)
@@ -72,8 +60,30 @@
     return procBg[key] = c;
   }
   const BG_SPEED = [3, 8, 18, 34];
+  // HD background: bg_<theme> scaled to the logical width, vertical scroll, mirrored every other tile (seamless loop).
+  // Bright themes get a dark overlay (NC.DATA.BG_DIM[theme] 0..1, fallback below).
+  const BG_DIM = { gas: 0.45, crystal: 0.3, edge: 0.2 };
+  const BG_ALIAS = (b) => (b.indexOf('wreck') === 0 ? 'wreck' : b);
+  RD.bgSpeed = 14;
+  function drawBgHd(g, biome, dt) {
+    const A = NC.assets, id = 'bg_' + BG_ALIAS(biome); if (!A.hd(id)) return false;
+    const s = A.get(id); if (!s.hd) return false; // still loading -> fallback layers this frame
+    const w = RD.W, h = w * s.h / s.w, oy = (RD.bgT * RD.bgSpeed) % (2 * h);
+    g.imageSmoothingEnabled = true;
+    for (let y = oy - 2 * h; y < RD.H; y += h) {
+      const n = Math.round((y - oy) / h), flip = ((n % 2) + 2) % 2 === 1;
+      if (flip) { g.save(); g.translate(0, y + h); g.scale(1, -1); g.drawImage(s.img, 0, 0, s.w, s.h, 0, 0, w, h + 0.5); g.restore(); }
+      else g.drawImage(s.img, 0, 0, s.w, s.h, 0, y, w, h + 0.5);
+    }
+    const dm = (NC.DATA && NC.DATA.BG_DIM) || BG_DIM, d = dm[BG_ALIAS(biome)];
+    if (d > 0) { g.globalAlpha = d; g.fillStyle = '#05070c'; g.fillRect(0, 0, RD.W, RD.H); g.globalAlpha = 1; }
+    void dt; return true;
+  }
   function drawBg(g, biome, dt) {
     RD.bgT += dt;
+    if (drawBgHd(g, biome, dt)) return;
+    g.fillStyle = '#10141f'; g.fillRect(0, 0, RD.W, RD.H);
+    g.imageSmoothingEnabled = false;
     for (let n = 1; n <= 4; n++) {
       const id = 'bg_' + biome + '_' + n; let img, w, h;
       if (NC.assets.has(id)) { const s = NC.assets.get(id); img = s.img; w = s.w; h = s.h; } else { img = procLayer(biome, n); w = 320; h = 180; }
@@ -105,7 +115,7 @@
     return pkCache[kind] = { img: c, n, frames: d.frames };
   }
   const PK_SPR = { cr: 'pk_crystal', xp: 'pk_xp', star: 'pk_star' };
-  RD.pkSprite = (kind) => { const id = PK_SPR[kind], A = NC.assets; return A.has(id) && A.get(id).w <= PK[kind].max ? id : null; };
+  RD.pkSprite = (kind) => { const id = PK_SPR[kind], A = NC.assets; if (!A.has(id)) return null; const s = A.get(id); return s.hd || s.w <= PK[kind].max ? id : null; };
   function drawPickup(g, it, t) {
     const A = NC.assets, id = RD.pkSprite(it.kind);
     if (it.kind === 'star') { // soft pulsing additive glow under the sphere
@@ -119,21 +129,19 @@
 
   // ------------------------------------------------------------ main draw
   RD.draw = (dt) => {
-    const g = RD.lg, G = X.G, R = X.R;
-    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
-    const biome = R ? R.biome : 'nebula';
+    const g = RD.g, G = X.G, R = X.R, k = RD.k;
+    g.setTransform(k, 0, 0, k, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+    const biome = R ? (R.bgTheme || R.biome) : 'nebula';
     drawBg(g, biome, G.mode === 'paused' || G.mode === 'cards' ? 0 : dt);
     if (R && G.mode !== 'menu') {
       const F = NC.fx;
-      const sh = F.shake > 0 ? [Math.round(U.rnd(-F.shake, F.shake)), Math.round(U.rnd(-F.shake, F.shake))] : [0, 0];
-      g.setTransform(1, 0, 0, 1, sh[0], sh[1]);
+      const sh = F.shake > 0 ? [U.rnd(-F.shake, F.shake), U.rnd(-F.shake, F.shake)] : [0, 0];
+      g.setTransform(k, 0, 0, k, sh[0] * k, sh[1] * k);
       drawWorld(g, R, G);
-      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.setTransform(k, 0, 0, k, 0, 0);
       if (R.event && R.event.id === 'ionstorm' && Math.random() < 0.06) { g.globalAlpha = 0.12; g.fillStyle = '#2ce8f5'; g.fillRect(0, 0, RD.W, RD.H); g.globalAlpha = 1; }
       if (F.flash > 0) { g.globalAlpha = Math.min(0.5, F.flash); g.fillStyle = F.flashCol; g.fillRect(0, 0, RD.W, RD.H); g.globalAlpha = 1; }
     }
-    const v = RD.g; v.imageSmoothingEnabled = false;
-    v.drawImage(RD.lo, 0, 0, RD.W, RD.H, 0, 0, RD.W * RD.kb, RD.H * RD.kb);
   };
 
   const cb = () => U.settings().colorblind;
@@ -151,6 +159,7 @@
       if (blink) continue;
       if (it.kind === 'chest') A.draw(g, 'chest_' + it.r, it.x, it.y + Math.round(Math.sin(it.t * 4)));
       else if (it.kind === 'cr' || it.kind === 'xp' || it.kind === 'star') drawPickup(g, it, t);
+      else if (it.kind === 'ore') { F.drawGlow(g, it.x, it.y, 7, '#9fd0e8', 0.35 + 0.15 * Math.sin(t * 6)); if (A.has('ore_' + it.type)) A.draw(g, 'ore_' + it.type, it.x, it.y); else { P.disc(g, it.x, it.y, 3, '#8fd3ff'); P.rect(g, it.x - 1, it.y - 2, 1, 1, '#ffffff'); } }
       else A.draw(g, it.spr, it.x, it.y, A.frameAt(it.spr, it.t));
     }
     // asteroids (sector event): procedural pixel rocks
@@ -164,6 +173,7 @@
       if (e.state === 'aim' && e.tx != null) P.dashed(g, e.x, e.y, e.tx, e.ty, '#e43b44', 2, 3);
       if (e.state === 'arm') P.circle(g, e.x, e.y, 22, Math.floor(t * 12) % 2 ? '#ff0044' : '#feae34');
       if (e.shieldBlocks && !e.cloaked) { g.fillStyle = '#2ce8f5'; g.fillRect(Math.round(e.x - 14), Math.round(e.y + e.size / 2 + 1), 28, 1); g.fillRect(Math.round(e.x - 16), Math.round(e.y + e.size / 2), 2, 1); g.fillRect(Math.round(e.x + 14), Math.round(e.y + e.size / 2), 2, 1); }
+      if (e.slowT > 0) F.drawGlow(g, e.x, e.y, e.size * 0.6, '#8fd3ff', 0.35);
       if (e.burn && Math.random() < 0.3) F.spark(e.x + U.rnd(-4, 4), e.y, '#f77622', 0, -15, 0.3);
     }
     // bosses
@@ -182,15 +192,14 @@
       if (b.kind === 'wave') { drawWave(g, b); continue; }
       if (b.kind === 'nanite' || b.kind === 'pellet') { if (b.spr && A.has(b.spr)) A.draw(g, b.spr, b.x, b.y, A.frameAt(b.spr, R.time)); else { P.rect(g, b.x - 1, b.y - 1, 2, 2, b.col); if (b.kind === 'nanite') P.rect(g, b.x, b.y, 1, 1, '#ffffff'); } continue; }
       if (b.kind === 'blaster' || b.kind === 'secm') { const s = b.spr && A.has(b.spr) ? A.get(b.spr) : null, an = Math.atan2(b.vy, b.vx);
-        if (s) { g.save(); g.translate(Math.round(b.x), Math.round(b.y)); g.rotate(an + Math.PI / 2); g.drawImage(s.img, 0, 0, s.w, s.h, -Math.round(s.w / 2), -Math.round(s.h / 2), s.w, s.h); g.restore(); }
+        if (s) A.draw(g, b.spr, b.x, b.y, 0, { rot: an + Math.PI / 2, scale: b.sc });
         else { const L = b.kind === 'blaster' ? 4 : 2; P.line(g, b.x, b.y, b.x - Math.cos(an) * L, b.y - Math.sin(an) * L, b.col, 2); if (b.kind === 'blaster') P.line(g, b.x, b.y, b.x - Math.cos(an) * (L - 1), b.y - Math.sin(an) * (L - 1), '#ffd0c8', 1); }
         if (b.kind === 'blaster') NC.fx.drawGlow(g, b.x, b.y, 4, '#e0574f', 0.35); continue; }
       if (b.col && !A.has(b.spr)) { P.rect(g, b.x - 1, b.y - 3, 2, 5, b.col); continue; }
       if (b.kind === 'missile') { // nose points along the flight direction (sprite faces up)
-        const s = A.has(b.spr) ? A.get(b.spr) : null; if (s && s.img) { g.save(); g.translate(Math.round(b.x), Math.round(b.y)); g.rotate(Math.atan2(b.vy, b.vx) + Math.PI / 2);
-          const fw = s.w, fh = s.h; g.drawImage(s.img, 0, 0, fw, fh, -Math.round(fw / 2), -Math.round(fh / 2), fw, fh); g.restore(); continue; }
+        if (A.has(b.spr)) { A.draw(g, b.spr, b.x, b.y, 0, { rot: Math.atan2(b.vy, b.vx) + Math.PI / 2, scale: b.sc }); continue; }
       }
-      A.draw(g, b.spr, b.x, b.y, 0, { flipY: b.vy > 30 });
+      A.draw(g, b.spr, b.x, b.y, 0, { flipY: b.vy > 30, scale: b.sc });
     }
     for (const r of R.rails) { const x2 = r.x + Math.cos(r.ang) * r.len, y2 = r.y + Math.sin(r.ang) * r.len; g.globalAlpha = r.life / r.ml; P.line(g, r.x, r.y, x2, y2, r.evo ? '#fee761' : '#feae34', 3); P.line(g, r.x, r.y, x2, y2, '#ffffff', 1); g.globalAlpha = 1; }
     drawWeaponFx(g, R, t);
@@ -198,6 +207,9 @@
     if (R.tur) { if (R.tur.beam) { P.line(g, R.tur.x, R.tur.y, R.tur.beam.x, R.tur.beam.y, '#feae34', 1); } A.draw(g, 'tur_' + R.tur.id, R.tur.x, R.tur.y); }
     if (R.comp) A.draw(g, 'comp_' + R.comp.id, R.comp.x, R.comp.y);
     if (R.m.orbit > 0 && p.alive) for (let i = 0; i < R.m.orbit; i++) { const a = R.orbitA + i / R.m.orbit * U.TAU, bx = Math.round(p.x + Math.cos(a) * 24), by = Math.round(p.y + Math.sin(a) * 24); P.rect(g, bx - 1, by, 3, 1, '#2ce8f5'); P.rect(g, bx, by - 1, 1, 3, '#2ce8f5'); P.rect(g, bx, by, 1, 1, '#ffffff'); }
+    // 4.0 card visuals: helper drones, vampiric field
+    for (const h of R.helpers || []) { if (A.has('sec_drone_obj')) A.draw(g, 'sec_drone_obj', h.x, h.y, 0, { scale: 0.7 }); else { P.rect(g, h.x - 2, h.y - 1, 5, 2, '#5a6988'); P.rect(g, h.x, h.y - 2, 1, 1, '#8fd3ff'); } }
+    if (R.m.sp && R.m.sp.vampfield && p.alive) { g.globalAlpha = 0.25 + 0.1 * Math.sin(t * 4); P.circle(g, p.x, p.y, R.m.sp.vampfield.radius || 46, '#c0645c'); g.globalAlpha = 1; }
     // player
     if (p.alive) {
       const blink = p.inv > 0 && R.buffs.shield <= 0 && Math.floor(t * 16) % 2;
@@ -234,7 +246,9 @@
   }
   function beamSeg(g, x1, y1, x2, y2, col, core, w, id) { // beam: sprite tile along the line when art has it, else pixel lines
     const A = NC.assets;
-    if (id && A.has(id)) { const s = A.get(id), L = Math.hypot(x2 - x1, y2 - y1), an = Math.atan2(y2 - y1, x2 - x1); g.save(); g.translate(Math.round(x1), Math.round(y1)); g.rotate(an - Math.PI / 2);
+    if (id && A.has(id)) { const s = A.get(id), L = Math.hypot(x2 - x1, y2 - y1), an = Math.atan2(y2 - y1, x2 - x1); g.save(); g.translate(x1, y1); g.rotate(an - Math.PI / 2);
+      if (s.hd) { g.imageSmoothingEnabled = true; g.drawImage(s.img, 0, 0, s.w, s.h, -w, 0, w * 2, L); g.restore(); return; }
+      g.imageSmoothingEnabled = false;
       for (let d = 0; d < L; d += s.h) g.drawImage(s.img, 0, 0, s.w, Math.min(s.h, L - d), -Math.round(s.w / 2), Math.round(d), s.w, Math.min(s.h, L - d)); g.restore(); return; }
     P.line(g, x1, y1, x2, y2, col, w); P.line(g, x1, y1, x2, y2, core, Math.max(1, w - 2));
   }
@@ -247,7 +261,7 @@
       F.drawGlow(g, o.x, o.y, 5 + k * 3, '#9a78b8', 0.5); F.drawGlow(g, p.x, p.y - 10, 4, '#9a78b8', 0.4); }
     for (const f of R.skfx || []) {
       const k = Math.max(0, f.t / (f.ml || 1));
-      if (f.type === 'beam' && f.x != null) { const x2 = f.x + Math.cos(f.ang) * 320, y2 = f.y + Math.sin(f.ang) * 320, w = Math.round(f.w * (0.7 + 0.3 * Math.sin(t * 50)));
+      if (f.type === 'beam' && f.x != null) { const x2 = f.x + Math.cos(f.ang) * 640, y2 = f.y + Math.sin(f.ang) * 640, w = Math.round(f.w * (0.7 + 0.3 * Math.sin(t * 50)));
         beamSeg(g, f.x, f.y, x2, y2, '#2ce8f5', '#ffffff', w, A.has('fx_skill_beam') ? 'fx_skill_beam' : null); F.drawGlow(g, f.x, f.y, 10, '#2ce8f5', 0.7); }
       else if (f.type === 'fring') { g.globalAlpha = 0.5 + 0.5 * k; P.circle(g, f.x, f.y, f.r, '#feae34'); P.circle(g, f.x, f.y, f.r - 1, '#f77622'); P.circle(g, f.x, f.y, f.r - 3, '#b0605a'); g.globalAlpha = 1; }
       else if (f.type === 'kring') { const r = f.r * (1 - k * 0.7); g.globalAlpha = k; P.circle(g, f.x, f.y, r, '#f0c070'); P.circle(g, f.x, f.y, r - 2, '#e0a060'); g.globalAlpha = 1; }
@@ -263,7 +277,7 @@
       if (A.has('sec_mine')) A.draw(g, 'sec_mine', m.x, m.y, A.frameAt('sec_mine', m.t)); else { P.disc(g, m.x, m.y, 2, '#5a6988'); P.rect(g, m.x, m.y, 1, 1, bl ? '#c0645c' : '#3a4466'); }
       if (armed && bl) P.circle(g, m.x, m.y, 4, '#c0645c'); }
     if (S.id === 'blade' && S.pts) for (const q of S.pts) { if (!q) continue;
-      if (A.has('sec_blade_obj')) { const s = A.get('sec_blade_obj'); g.save(); g.translate(Math.round(q.x), Math.round(q.y)); g.rotate(t * 12); g.drawImage(s.img, 0, 0, s.w, s.h, -Math.round(s.w / 2), -Math.round(s.h / 2), s.w, s.h); g.restore(); }
+      if (A.has('sec_blade_obj')) A.draw(g, 'sec_blade_obj', q.x, q.y, 0, { rot: t * 12 });
       else { const a = t * 12, c = Math.cos(a) * 3, s2 = Math.sin(a) * 3; P.line(g, q.x - c, q.y - s2, q.x + c, q.y + s2, '#c0cbdc'); P.line(g, q.x + s2, q.y - c, q.x - s2, q.y + c, '#8a94a3'); P.rect(g, q.x, q.y, 1, 1, '#ffffff'); } }
     if (S.id === 'drone') { if (A.has('sec_drone_obj')) A.draw(g, 'sec_drone_obj', S.x, S.y + Math.round(Math.sin(t * 4)), A.frameAt('sec_drone_obj', t));
       else { P.rect(g, S.x - 3, S.y - 1, 7, 3, '#5a6988'); P.rect(g, S.x - 1, S.y - 3, 3, 2, '#78a86c'); P.rect(g, S.x, S.y - 2, 1, 1, '#ffffff'); } }
@@ -272,8 +286,8 @@
 
   // Draws a ship preview into any canvas at integer scale (for UI / loading screen helpers)
   RD.drawShip = (canvas, shipId, scale) => {
-    const s = NC.assets.get('ship_' + shipId), k = Math.max(1, Math.round(scale || Math.floor(Math.min(canvas.width, canvas.height) / s.w)));
-    const g = canvas.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, canvas.width, canvas.height);
+    const s = NC.assets.get('ship_' + shipId), k = s.hd ? Math.min(canvas.width, canvas.height) / Math.max(s.w, s.h) : Math.max(1, Math.round(scale || Math.floor(Math.min(canvas.width, canvas.height) / s.w)));
+    const g = canvas.getContext('2d'); g.imageSmoothingEnabled = !!s.hd; g.clearRect(0, 0, canvas.width, canvas.height);
     g.drawImage(s.img, 0, 0, s.w, s.h, Math.round((canvas.width - s.w * k) / 2), Math.round((canvas.height - s.h * k) / 2), s.w * k, s.h * k);
   };
 })(window.NC = window.NC || {});

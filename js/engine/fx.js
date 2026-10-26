@@ -88,7 +88,7 @@
   };
   F.spark = (x, y, col, vx, vy, life = 0.3) => { if (F.headless || F.parts.length > cap()) return; F.parts.push({ x, y, vx, vy, life, ml: life, col, s: 1, drag: 0.2 }); };
   F.ring = (x, y, col, max, life = 0.4) => { if (F.headless) return; F.rings.push({ x, y, col, r: 2, max, life, ml: life }); };
-  F.anim = (id, x, y, fps, opts) => { if (F.headless) return; const s = NC.assets.get(id); F.anims.push(Object.assign({ id, x, y, t: 0, fps: fps || s.fps || 16, frames: s.frames }, opts)); };
+  F.anim = (id, x, y, fps, opts) => { if (F.headless) return; const s = NC.assets.get(id); F.anims.push(Object.assign({ id, x, y, t: 0, fps: fps || s.fps || 16, frames: s.frames }, s.hd && s.frames === 1 ? { loop: 0.32, hd1: true } : null, opts)); }; // HD single image: 0.32 s grow + fade
   F.pop = (x, y, txt, col, life = 0.7) => { if (F.headless) return; if (F.pops.length > 40) F.pops.shift(); F.pops.push({ x, y, txt, col, life, ml: life, vy: -22 }); };
   F.dmg = (x, y, v, crit) => { if (F.headless || !U.settings().dmgNum) return; F.pop(x + U.rnd(-4, 4), y - 4, U.fmt(v), crit ? F.COL.amber : F.COL.ink, crit ? 0.7 : 0.5); };
   F.glow = (x, y, r, col, life = 0.3) => { if (F.headless || F.glows.length > 40) return; F.glows.push({ x, y, r, col, life, ml: life }); };
@@ -127,7 +127,7 @@
       g.globalAlpha = 1; return;
     }
     for (const q of F.glows) { const k = q.life / q.ml; F.drawGlow(g, q.x, q.y, q.r * (1.25 - 0.25 * k), q.col, k * 0.9); }
-    for (const a of F.anims) if (a.t >= 0) NC.assets.draw(g, a.id, a.x, a.y, Math.floor(a.t * a.fps), { alpha: a.alpha });
+    for (const a of F.anims) if (a.t >= 0) { if (a.hd1) { const k = a.t / a.loop; NC.assets.draw(g, a.id, a.x, a.y, 0, { alpha: (a.alpha == null ? 1 : a.alpha) * (1 - k * k), scale: 0.7 + 0.5 * k }); } else NC.assets.draw(g, a.id, a.x, a.y, Math.floor(a.t * a.fps), { alpha: a.alpha }); }
     for (const q of F.parts) { g.globalAlpha = q.life / q.ml > 0.5 ? 1 : 0.6; g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
     g.globalAlpha = 1;
     for (const b of F.bolts) { // jagged lightning

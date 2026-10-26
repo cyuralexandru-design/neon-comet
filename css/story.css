@@ -180,3 +180,36 @@ body.lefty #stAb .st-ab.s2 { left: calc(max(calc(var(--hs) * 16), env(safe-area-
 #stAb .st-ab .gl { position: absolute; left: 50%; top: calc(var(--hs) * -9); transform: translateX(-50%); }
 #stAb .st-ab .gl kbd { font: 700 calc(var(--hs) * 10)/1 'NCUI', sans-serif; color: var(--ink); background: var(--panel2); border: 1px solid var(--line); padding: calc(var(--hs) * 1) calc(var(--hs) * 3); }
 #stAb .st-gl { width: calc(var(--hs) * 12); height: calc(var(--hs) * 12); image-rendering: pixelated; }
+
+/* ===================== 4.0 PORTRAIT + HD ===================== */
+.story > * { max-width: 480px; width: 100%; margin-left: auto; margin-right: auto; }
+.story img.hd, .sd-modal img.hd { image-rendering: auto !important; filter: none; }
+/* chapter map: 2-column grid of world emblems, scrollable */
+.st-worlds { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; overflow-y: auto; align-content: start; }
+.st-world { min-height: 170px; padding: 8px; }
+.st-world .st-wimg img.hd, .st-wi.hd { width: 86%; filter: drop-shadow(0 4px 12px rgba(0,0,0,.6)); }
+.st-world b { font-size: 14px; }
+/* level path: tall vertical map with the world background */
+.st-path { min-height: 560px; overflow-y: auto; background-size: cover; background-position: center; }
+.st-nc { width: 48px; height: 48px; font-size: 18px; }
+.st-node.b-mini .st-nc { width: 56px; height: 56px; } .st-node.b-world .st-nc { width: 66px; height: 66px; }
+.st-bi { width: 44px; height: 40px; top: -34px; }
+/* team picker: stacked, crew cards 2 per row with chibi */
+.st-tw { flex-direction: column; overflow-y: auto; }
+.st-li { flex: 0 0 auto; }
+.st-port img.hd { object-fit: contain; }
+.st-port.md { width: 64px; height: 64px; } .st-port.lg { width: 110px; height: 110px; }
+/* result + crew + clues: stacked */
+.st-rw2, .st-cw, .st-cl { flex-direction: column !important; overflow-y: auto; }
+.st-ra { display: flex; flex-direction: column; gap: 8px; } .st-ra .btn { min-height: 48px; width: 100%; }
+/* dialog: manga page full screen, then the bottom dialog box with a crew bust */
+.sd-modal { padding: 0 !important; }
+.sd-wrap { width: min(100%, 480px); height: 100%; justify-content: flex-end; padding: 12px; }
+.sd-box { min-height: 150px; align-items: flex-end; }
+.sd-box.hdbox { background: var(--dbox) center / 100% 100% no-repeat, var(--panel); border: 0; }
+.sd-p.sd-bust { width: 120px; height: 150px; margin-top: -60px; border: 0; background: none; overflow: visible; }
+.sd-p.sd-bust img { object-fit: contain; object-position: bottom; filter: drop-shadow(0 4px 10px rgba(0,0,0,.7)); }
+.sd-tx p { font-size: 15px; }
+.sd-manga { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #05070b; cursor: pointer; }
+.sd-mimg { width: 100%; height: 100%; max-width: 480px; object-fit: contain; animation: sd-in .3s ease-out; }
+.sd-manga .sd-h { position: absolute; bottom: max(10px, env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center; }

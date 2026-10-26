@@ -1,5 +1,5 @@
 'use strict';
-// Neon Comet 3.1 - Home menu, Missions, Achievements, Exit (menus agent). Uses UI.MN helpers from settings.js (loads first).
+// Neon Comet 4.0 (portrait) - Home menu, Missions, Achievements, Exit (menus agent). Uses UI.MN helpers from settings.js (loads first).
 (function (NC) {
   const UI = NC.ui = NC.ui || {};
   UI.screens = UI.screens || {};
@@ -20,26 +20,32 @@
       const S = UI.S(), lv = NC.DATA.levelFromXp(S.xp), cs = NC.sys.computeStats(), M = MN();
       let misReady = 0, achReady = 0;
       try { misReady = NC.sys.missions().list.filter(m => m.done && !m.claimed).length; achReady = NC.sys.achievements().filter(a => a.done && !a.claimed).length; } catch (e) {}
-      const logo = NC.assets && NC.assets.has && NC.assets.has('ui_logo') ? UI.img('ui_logo', 'logo-img mn-logoimg') : `<div class="logo-txt mn-logotxt">NEON <span>COMET</span></div>`;
+      const hdu = id => { try { return (UI.hd && UI.hd(id)) || null; } catch (e) { return null; } };
+      const bg = hdu('bg_menu');
+      el.style.backgroundImage = bg ? `linear-gradient(rgba(11,14,20,.35), rgba(11,14,20,.15) 40%, rgba(11,14,20,.85)), url('${bg}')` : '';
+      el.classList.toggle('mn-hasbg', !!bg);
+      const logo = hdu('logo') ? `<img class="hd mn-logoimg mn-logohd" src="${esc(hdu('logo'))}" alt="Neon Comet" draggable="false">` : NC.assets && NC.assets.has && NC.assets.has('ui_logo') ? UI.img('ui_logo', 'logo-img mn-logoimg') : `<div class="logo-txt mn-logotxt">NEON <span>COMET</span></div>`;
       const sd = NC.sys.def('ship', S.ships.eq) || { r: 0 };
       const dot = n => n ? '<i class="mn-dot"></i>' : '';
-      const nb = (a, ico, label, d) => `<button class="mn-hb mn-cut" data-f data-a="${a}" data-k="h-${a}">${M.ico(ico)}<span>${esc(label)}</span>${d || ''}</button>`;
+      const hico = (k, ico) => { const u = (UI.hd && UI.hd('ico_' + k)) || null; return u ? `<img class="hd mn-hico" src="${esc(u)}" alt="">` : M.ico(ico); };
+      const nb = (a, ico, label, d) => `<button class="mn-hb mn-cut" data-f data-a="${a}" data-k="h-${a}">${hico(a, ico)}<span>${esc(label)}</span>${d || ''}</button>`;
       const pct = lv.need > 0 ? Math.max(0, Math.min(1, lv.into / lv.need)) : 1;
-      el.innerHTML = `<div class="mn-home pop-in">
-          <div class="mn-logo">${logo}<div class="mn-tag">${esc(t('menu.tagline'))}</div></div>
-          <div class="mn-pilot mn-cut">${UI.frame(sd.r, UI.img('ship_' + S.ships.eq, 'ico24'), { noPips: true })}
+      const shipArt = hdu('ship_' + S.ships.eq) ? `<img class="hd" src="${esc(hdu('ship_' + S.ships.eq))}" alt="">` : UI.img('ship_' + S.ships.eq, 'ico24');
+      // 4.0 portrait: top pilot bar, logo, big PLAY, 2-column grid, bottom bar (exit + version)
+      el.innerHTML = `<div class="mn-pilot mn-cut mn-ptop">${UI.frame(sd.r, shipArt, { noPips: true })}
             <div class="mn-pinfo"><div class="mn-pl1"><b>${esc(t('menu.pilotLvl', { n: lv.lvl }))}</b>${M.cr(S.crystals)}</div>
               <div class="mn-bar"><i style="width:${(pct * 100).toFixed(1)}%"></i></div>
               <div class="mn-pl2"><span>${esc(t('common.power'))} <b class="amb">${UI.fmt(cs.power)}</b></span><span>${esc(t('menu.best'))} <b>${UI.num(S.best)}</b></span></div></div></div>
-          <button class="btn pri lg cut mn-start" data-f data-first data-a="start" data-k="h-start">${M.ico('play')}<span>${esc(t('menu.start'))}</span></button>
+        <div class="mn-home pop-in">
+          <div class="mn-logo">${logo}<div class="mn-tag">${esc(t('menu.tagline'))}</div></div>
+          <button class="btn pri lg cut mn-start" data-f data-first data-a="start" data-k="h-start">${hico('play', 'play')}<span>${esc(t('menu.start'))}</span></button>
           <div class="mn-hgrid">
             ${nb('hangar', 'ship', t('menu.hangar'), dot(S.chests.some(n => n > 0)))}${nb('missions', 'list', t('menu.missions'), dot(misReady))}
             ${nb('achievements', 'trophy', t('menu.achievements'), dot(achReady))}${nb('settings', 'gear', t('menu.settings'))}
             ${nb('account', 'user', t('menu.account'))}${nb('help', 'help', t('menu.help'))}
           </div>
-          <button class="mn-exitb" data-f data-a="exit" data-k="h-exit">${M.ico('power')}<span>${esc(t('menu.exit'))}</span></button>
         </div>
-        <div class="mn-foot">${esc(M.ver())}</div>`;
+        <div class="mn-foot mn-bbar"><button class="mn-exitb" data-f data-a="exit" data-k="h-exit">${hico('exit', 'power')}<span>${esc(t('menu.exit'))}</span></button><span>${esc(M.ver())}</span></div>`;
     },
     act(a) {
       UI.sfx('click');

@@ -1,5 +1,10 @@
 'use strict';
-// Neon Comet 3.1 - DOM HUD (agent hud). Reads NC.hud every frame:
+// Neon Comet 4.0 - PORTRAIT DOM HUD (agent core). Top bar: HP + shield + XP (left), "Lv n · Sector n" under it, score centre,
+// crystals + pause right, alerts under the right block; boss bar under the top bar; touch cluster bottom-right (dash big,
+// 3 consumables + up to 3 crew abilities in an arc, mirrored with body.lefty). Sets NC.game.hudTop (logical y of the top HUD's
+// bottom edge) and NC.game.hudBottom (logical y of the TOP edge of the bottom controls; = H when nothing is there) + hudBottomH.
+// HD control art via UI.hd (ctl_dash, ctl_pause, ctl_cons_slot, ctl_ability_slot, ctl_joy_base, ctl_joy_knob) with CSS fallback.
+// (3.1 notes:) Reads NC.hud every frame:
 // {score, combo, sector, biome, hp, maxHp, shd, maxShd, crystals, runLvl, runXp, runNeed, dashCd01,
 //  consumables:[{id,count,cd01}], boss:{nameKey,hp01,mini,segs}|null, fps}
 // Engine hooks implemented here (SPEC-31 §2): UI.alert(type,data) (icon alerts, right column), UI.sector(n,biomeKey)
@@ -33,6 +38,8 @@
     return `<img class="ico pix ${cls || ''}" src="${esc(src)}" alt="" draggable="false">`;
   };
 
+  const hdU = id => { try { return UI.hd ? UI.hd(id) : null; } catch (e) { return null; } };
+  const hdBg = id => { const u = hdU(id); return u ? ` style="background-image:url('${esc(u)}')"` : ''; };
   const H = UI.hud = {};
   const cache = {};
   const setT = (el, key, v) => { if (el && cache[key] !== v) { cache[key] = v; el.textContent = v; } };
@@ -58,33 +65,34 @@
     builtLoaded = !!(NC.assets && NC.assets.loaded);
     const hud = $('hud'); if (!hud) return;
     hud.classList.add('hx');
+    const pz = hdU('ctl_pause');
     hud.innerHTML = `
-      <div class="hx-l" id="hxL">
-        <div class="hx-pnl hx-cut">
-          <div class="hx-lv" id="hxLvB"><small id="hxLvL"></small><b id="hxLvN">1</b></div>
-          <div class="hx-bars">
+      <div class="hx-top" id="hxTop">
+        <div class="hx-l" id="hxL">
+          <div class="hx-pnl hx-cut">
             <div class="hx-row"><i class="hx-gl hp"></i><div class="hx-bar hp" id="hxHpBar"><b id="hxHpG"></b><i id="hxHp"></i><span id="hxHpT"></span></div></div>
             <div class="hx-row"><i class="hx-gl shd"></i><div class="hx-bar shd" id="hxShdBar"><b id="hxShdG"></b><i id="hxShd"></i><span id="hxShdT"></span></div></div>
+            <div class="hx-xp" id="hxXpBar"><i id="hxXp"></i></div>
           </div>
-          <div class="hx-xp" id="hxXpBar"><i id="hxXp"></i></div>
+          <div class="hx-sub"><span class="hx-lv" id="hxLvB"><small id="hxLvL"></small> <b id="hxLvN">1</b></span><span class="hx-sec" id="hxSec"></span></div>
         </div>
-        <div class="hx-sec" id="hxSec"></div>
-      </div>
-      <div class="hx-c" id="hxC"><div class="hx-score" id="hxScore">0</div><div class="hx-combo" id="hxCombo"></div></div>
-      <div class="hx-r" id="hxR">
-        <div class="hx-rt" id="hxRt"><div class="hx-cr hx-cut" id="hxCrBox">${spr('ui_crystal', 'hx-cri') || '<i class="hx-crg"></i>'}<b id="hxCr">0</b></div><button class="hx-pause hx-cut" id="hxPause" type="button"><i></i></button></div>
-        <div class="hx-fps" id="hxFps" hidden></div>
-        <div class="hx-al" id="hxAl"></div>
+        <div class="hx-c" id="hxC"><div class="hx-score" id="hxScore">0</div><div class="hx-combo" id="hxCombo"></div></div>
+        <div class="hx-r" id="hxR">
+          <div class="hx-rt" id="hxRt"><div class="hx-cr hx-cut" id="hxCrBox">${(UI.hd && UI.hd('ui_crystal') ? UI.img('ui_crystal', 'hx-cri') : spr('ui_crystal', 'hx-cri')) || '<i class="hx-crg"></i>'}<b id="hxCr">0</b></div><button class="hx-pause hx-cut${pz ? ' hdb' : ''}" id="hxPause" type="button">${pz ? `<img class="hd" src="${esc(pz)}" alt="">` : '<i></i>'}</button></div>
+          <div class="hx-fps" id="hxFps" hidden></div>
+          <div class="hx-al" id="hxAl"></div>
+        </div>
       </div>
       <div class="hx-abil" id="hxAbil"></div>
       <div class="hx-intro" id="hxIntro"></div>
       <div class="hx-edge" id="hxEdge"></div>`;
     const tu = $('touchUI');
-    if (tu) { tu.classList.add('hx'); tu.innerHTML = `<div id="joyZone"><div id="joy"><i></i></div></div><div class="hx-tcl" id="hxTcl"></div>`; }
+    if (tu) { tu.classList.add('hx'); const jb = hdU('ctl_joy_base'), jk = hdU('ctl_joy_knob');
+      tu.innerHTML = `<div id="joyZone"><div id="joy" class="${jb ? 'hdj' : ''}"${hdBg('ctl_joy_base')}><i class="${jk ? 'hdk' : ''}"${hdBg('ctl_joy_knob')}></i></div></div><div class="hx-tcl" id="hxTcl"></div>`; }
     const bb = $('bossBar');
     if (bb) { bb.classList.add('hx'); bb.innerHTML = `<div class="hx-bn" id="hxBossN"></div><div class="hx-bsegs" id="hxBossSegs"></div>`; }
     const fp = $('fps'); if (fp) { fp.classList.add('hx'); fp.hidden = true; } // replaced by #hxFps in the right column
-    E = { L: $('hxL'), C: $('hxC'), rt: $('hxRt'), lvL: $('hxLvL'), lvN: $('hxLvN'), hpBar: $('hxHpBar'), hp: $('hxHp'), hpG: $('hxHpG'), hpT: $('hxHpT'),
+    E = { top: $('hxTop'), L: $('hxL'), C: $('hxC'), rt: $('hxRt'), lvL: $('hxLvL'), lvN: $('hxLvN'), hpBar: $('hxHpBar'), hp: $('hxHp'), hpG: $('hxHpG'), hpT: $('hxHpT'),
       shdBar: $('hxShdBar'), shd: $('hxShd'), shdG: $('hxShdG'), shdT: $('hxShdT'), xpBar: $('hxXpBar'), xp: $('hxXp'), sec: $('hxSec'), score: $('hxScore'), combo: $('hxCombo'),
       cr: $('hxCr'), crBox: $('hxCrBox'), pause: $('hxPause'), fps: $('hxFps'), al: $('hxAl'), abil: $('hxAbil'), intro: $('hxIntro'), edge: $('hxEdge'),
       tcl: $('hxTcl'), joy: $('joy'), joyZone: $('joyZone'), boss: bb, bossName: $('hxBossN'), bossSegs: $('hxBossSegs') };
@@ -107,8 +115,8 @@
   // scale vars + touch-zone top + hudTop
   H.relayout = () => {
     consSig = '';
-    const w = innerWidth || 844, h = innerHeight || 390;
-    const hs = Math.max(0.9, Math.min(1.8, Math.min(h / 390, w / 844)));
+    const w = UI.stageW || innerWidth || 390, h = UI.stageH || innerHeight || 844;
+    const hs = Math.max(0.85, Math.min(1.6, Math.min(w / 390, h / 844)));
     const st = document.documentElement.style;
     st.setProperty('--hs', hs.toFixed(3) + 'px');
     st.setProperty('--hpx', Math.max(1, Math.round(hs * 2)) + 'px');
@@ -129,24 +137,30 @@
 
   // ------------------------------------------------ safe zone (SPEC §2.4): NC.game.hudTop in logical canvas px
   function measure() {
-    let bot = 0;
+    let bot = 0, btop = 0;
     if (visible) {
-      [E.L, E.C, E.rt, boss.on ? E.boss : null].forEach(el => {
+      [E.top, boss.on ? E.boss : null].forEach(el => {
         if (!el || el.hidden || !el.getClientRects().length) return;
         const r = el.getBoundingClientRect(); if (r.height > 0) bot = Math.max(bot, r.bottom);
       });
+      const bEl = isTouch() ? E.tcl : E.abil;
+      if (bEl && bEl.getClientRects().length) {
+        // top edge of the real buttons (the cluster box itself is larger than its arc)
+        let tp = Infinity; Array.from(bEl.children).forEach(c => { const r = c.getBoundingClientRect(); if (r.height > 0) tp = Math.min(tp, r.top); });
+        if (tp < Infinity) btop = tp;
+      }
     }
-    if (!bot) bot = Math.round(66 * (H.hs || 1)); // estimate before the HUD is first shown
+    if (!bot) bot = Math.round(78 * (H.hs || 1)); // estimate before the HUD is first shown
     bot = Math.ceil(bot);
     if (cache.mBot !== bot) { cache.mBot = bot; document.documentElement.style.setProperty('--hx-top', bot + 'px'); }
     const G = NC.game; if (!G) return;
     const cv = (G.canvas) || $('c');
-    const RH = (NC.render && NC.render.H) || G.H || 180;
-    let logical = 0;
+    const RH = (NC.render && NC.render.H) || G.H || 400;
     const r = cv && cv.getBoundingClientRect ? cv.getBoundingClientRect() : null;
-    if (r && r.height > 0) logical = (bot - r.top) * RH / r.height;
-    else { const k = (NC.render && NC.render.k) || 1, dpr = (NC.render && NC.render.dpr) || window.devicePixelRatio || 1; logical = bot * dpr / k; }
-    G.hudTop = Math.max(0, Math.ceil(logical));
+    const toL = y => (r && r.height > 0 ? (y - r.top) * RH / r.height : y * ((NC.render && NC.render.dpr) || 1) / ((NC.render && NC.render.k) || 1));
+    G.hudTop = Math.max(0, Math.ceil(toL(bot)));
+    const bl = btop ? Math.max(0, Math.min(RH, Math.floor(toL(btop)))) : RH;
+    G.hudBottom = bl; G.hudBottomH = Math.max(0, RH - bl);
   }
   H.measure = measure;
 
@@ -167,18 +181,28 @@
     const txt = g.txt || SPR_TXT[g.spr] || '';
     return txt ? `<span class="hx-gly t">${esc(txt)}</span>` : '';
   }
-  function buildAbilities(cons) {
+  function buildAbilities(cons, crew) {
+    crew = crew || [];
     const pad = isPad();
     const keyChip = (action, kb) => (pad ? glyphHtml(action) : `<span class="hx-key">${esc(kb)}</span>`);
     E.abil.innerHTML = `<div class="hx-ab dash" id="hxAbD"><span class="dl">${esc(t('hud.dashL'))}</span>${keyChip('dash', t('hud.keySpace'))}<i class="cd" id="hxAbDCd"></i></div>` +
       cons.map((c, i) => `<div class="hx-ab ${c.count ? '' : 'empty'}" id="hxAb${i}">${keyChip(PAD_ACT[i], String(i + 1))}${spr('cons_' + c.id, 'hx-ci')}<span class="n" id="hxAbN${i}">${c.count}</span><i class="cd" id="hxAbCd${i}"></i></div>`).join('');
     if (!E.tcl) return;
-    E.tcl.innerHTML = `<button class="hx-tb dash" id="hxTbD" type="button"><span class="dl">${esc(t('hud.dashL'))}</span><i class="cd" id="hxTbDCd"></i>${pad ? glyphHtml('dash') : ''}</button>` +
-      cons.map((c, i) => `<button class="hx-tb cons c${i} ${c.count ? '' : 'empty'}" id="hxTb${i}" type="button">${spr('cons_' + c.id, 'hx-ci')}<span class="n" id="hxTbN${i}">${c.count}</span><i class="cd" id="hxTbCd${i}"></i>${pad ? glyphHtml(PAD_ACT[i]) : ''}</button>`).join('');
+    const dh = hdU('ctl_dash'), ch = hdU('ctl_cons_slot'), ah = hdU('ctl_ability_slot');
+    const icon = id => (hdU(id) ? UI.img(id, 'hx-ci') : spr(id, 'hx-ci'));
+    E.tcl.classList.toggle('crew', crew.length > 0);
+    E.tcl.innerHTML = `<button class="hx-tb dash${dh ? ' hdb' : ''}" id="hxTbD" type="button"${hdBg('ctl_dash')}>${dh ? '' : `<span class="dl">${esc(t('hud.dashL'))}</span>`}<i class="cd" id="hxTbDCd"></i>${pad ? glyphHtml('dash') : ''}</button>` +
+      cons.map((c, i) => `<button class="hx-tb cons c${i} ${c.count ? '' : 'empty'}${ch ? ' hdb' : ''}" id="hxTb${i}" type="button"${hdBg('ctl_cons_slot')}>${icon('cons_' + c.id)}<span class="n" id="hxTbN${i}">${c.count}</span><i class="cd" id="hxTbCd${i}"></i>${pad ? glyphHtml(PAD_ACT[i]) : ''}</button>`).join('') +
+      crew.slice(0, 3).map((c, i) => `<button class="hx-tb ab a${i}${ah ? ' hdb' : ''}" id="hxTa${i}" type="button"${hdBg('ctl_ability_slot')}>${icon('ab_' + c.id) || `<b>${esc(String(c.id || '?').charAt(0).toUpperCase())}</b>`}<i class="cd" id="hxTaCd${i}"></i></button>`).join('');
     const press = (el, fn) => el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); el.classList.add('down'); fn(); try { UI.buzz && UI.buzz(12); } catch (x) {} });
     const up = el => ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, () => el.classList.remove('down')));
     const d = $('hxTbD'); press(d, () => NC.Input && NC.Input.press && NC.Input.press('dash')); up(d);
     cons.forEach((c, i) => { const b = $('hxTb' + i); press(b, () => useCons(i)); up(b); });
+    crew.slice(0, 3).forEach((c, i) => { const b = $('hxTa' + i); press(b, () => useAb(i)); up(b); });
+    requestAnimationFrame(() => measure());
+  }
+  function useAb(i) {
+    try { if (NC.game && NC.game.useAbility) NC.game.useAbility(i); else if (NC.Input && NC.Input.press) NC.Input.press('ab', i); } catch (e) { console.error(e); }
   }
   function useCons(i) {
     if (NC.Input && NC.Input.press) NC.Input.press('cons', i);
@@ -351,8 +375,9 @@
     setT(E.cr, 'cr', fmt(h.crystals || 0));
     // abilities
     const cons = (h.consumables || []).slice(0, 3);
-    const sig = cons.map(c => c.id).join(',') + '|' + isTouch() + '|' + isPad() + '|' + (NC.Input && NC.Input.pad && NC.Input.pad.sony) + '|' + NC.lang + '|' + !!(NC.assets && NC.assets.loaded);
-    if (sig !== consSig) { consSig = sig; buildAbilities(cons); Object.keys(cache).filter(k => /^(ab|tb|e\d)/.test(k)).forEach(k => delete cache[k]); }
+    const crew = isTouch() && Array.isArray(h.crew) ? h.crew.slice(0, 3) : [];
+    const sig = cons.map(c => c.id).join(',') + '/' + crew.map(c => c.id).join(',') + '|' + isTouch() + '|' + isPad() + '|' + (NC.Input && NC.Input.pad && NC.Input.pad.sony) + '|' + NC.lang + '|' + !!(NC.assets && NC.assets.loaded);
+    if (sig !== consSig) { consSig = sig; buildAbilities(cons, crew); Object.keys(cache).filter(k => /^(ab|tb|ta|e\d)/.test(k)).forEach(k => delete cache[k]); }
     const dcd = Math.max(0, Math.min(1, h.dashCd01 || 0));
     setS($('hxAbDCd'), 'abD', 'height', (dcd * 100).toFixed(0) + '%');
     setS($('hxTbDCd'), 'tbD', '--p', dcd.toFixed(3));
@@ -361,6 +386,11 @@
       setT($('hxAbN' + i), 'abN' + i, String(n)); setT($('hxTbN' + i), 'tbN' + i, String(n));
       setS($('hxAbCd' + i), 'abC' + i, 'height', (cd * 100).toFixed(0) + '%'); setS($('hxTbCd' + i), 'tbC' + i, '--p', cd.toFixed(3));
       if (cache['e' + i] !== !n) { cache['e' + i] = !n; const ea = $('hxAb' + i), et = $('hxTb' + i); if (ea) ea.classList.toggle('empty', !n); if (et) et.classList.toggle('empty', !n); }
+    });
+    crew.forEach((c, i) => {
+      const cd = Math.max(0, Math.min(1, +c.cd01 || 0));
+      setS($('hxTaCd' + i), 'taC' + i, '--p', cd.toFixed(3));
+      const b = $('hxTa' + i); setC(b, 'taR' + i, 'rdy', cd <= 0); setC(b, 'taA' + i, 'act', !!c.active);
     });
     // joystick visual follows NC.Input.joy (coords relative to the zone)
     const J = NC.Input && NC.Input.joy;

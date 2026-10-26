@@ -98,12 +98,14 @@
       if (e.leaving != null) { e.leaving -= dt; e.y -= 60 * dt; if (e.leaving <= 0) { e.dead = true; e.silent = true; F().anim('fx_spark', e.x, e.y); } continue; }
       e.t += dt; e.flash = Math.max(0, e.flash - dt);
       if (e.burn) { e.burn.t -= dt; e.burnTick = (e.burnTick || 0) - dt; if (e.burnTick <= 0) { e.burnTick = 0.25; X.damage(e, e.burn.dps * 0.25, false, e.x, e.y, { quiet: true }); } if (e.burn && e.burn.t <= 0) e.burn = null; if (e.dead) continue; }
+      if (X.tickDots) { X.tickDots(e, dt); if (e.dead) continue; }
       if (e.entering) { e.y += e.vy * dt; if (e.y >= top(e)) { e.entering = false; e.vy = e.d.sp * 0.5; } continue; }
       if (e.ally) { if (EN.allyAI) EN.allyAI(e, dt); } // story hooks: hijacked ally / stunned
       else if (e.stun > 0) { e.stun -= dt; e.vx *= Math.pow(0.02, dt); e.vy *= Math.pow(0.02, dt); }
       else ai(e, dt, R, G, p);
       if (R.event && R.event.id === 'blackhole') X.gravity(e, dt, 0.25);
-      e.x += e.vx * dt; e.y += e.vy * dt;
+      const sk = e.slowT > 0 ? (e.slowK || 0.5) : 1; // card freeze
+      e.x += e.vx * dt * sk; e.y += e.vy * dt * sk;
       const h = e.size / 2;
       if (e.ai !== 'free') {
         if (e.x < h) { e.x = h; e.vx = Math.abs(e.vx); } else if (e.x > G.W - h) { e.x = G.W - h; e.vx = -Math.abs(e.vx); }
@@ -162,7 +164,7 @@
       case 'sentinel': {
         steer(e, U.clamp(G.W * (0.2 + 0.6 * ((e.seed * 7) % 1)) + Math.sin(e.t * 0.3) * 30, 16, G.W - 16), band(e, e.homeY, 37), sp, 1, dt);
         e.fireT -= dt;
-        if (e.fireT <= 0) { X.R.beams.push({ src: e, x: e.x, y: e.y, ang: Math.atan2(p.y - e.y, p.x - e.x), len: 400, w: 5, charge: 1.1, fire: 0.5, t: 0, dmg: e.dmg * 2, tick: 0, owner: 'enemy', col: '#2ce8f5' }); e.fireT = U.rnd(4.2, 5.4); U.sfx('beam_charge'); }
+        if (e.fireT <= 0) { X.R.beams.push({ src: e, x: e.x, y: e.y, ang: Math.atan2(p.y - e.y, p.x - e.x), len: 640, w: 5, charge: 1.1, fire: 0.5, t: 0, dmg: e.dmg * 2, tick: 0, owner: 'enemy', col: '#2ce8f5' }); e.fireT = U.rnd(4.2, 5.4); U.sfx('beam_charge'); }
         break;
       }
       case 'wraith': {

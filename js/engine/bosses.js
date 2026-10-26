@@ -50,7 +50,7 @@
   B.spawnBoss = (idx, over) => { // over = custom def (story world boss)
     const R = X.R, G = X.G, def = over || B.def(idx), hp = Math.round((over ? over.hp : B.bossHp(idx)) * ((NC.game.diffMul && NC.game.diffMul().hp) || 1));
     const b = R.boss = {
-      kind: 'boss', big: true, def, idx, id: def.id, spr: 'boss_' + def.id, size: 112, r: 34, x: G.W / 2, y: -60, tx: G.W / 2, ty: 0,
+      kind: 'boss', big: true, def, idx, id: def.id, spr: 'boss_' + def.id, size: 120, r: 36, x: G.W / 2, y: -60, tx: G.W / 2, ty: 0,
       hp, max: hp, state: 'enter', phase: 0, step: 0, t: 0, cool: 1.2, atk: null, flash: 0, inv: 0, alpha: 1, untargetable: true,
       nameKey: 'boss.' + def.id + '.name',
     };
@@ -63,7 +63,7 @@
     const R = X.R, G = X.G, d = over || B.miniDef(n);
     const hp = Math.round(d.hp * ((NC.game.diffMul && NC.game.diffMul().hp) || 1));
     const b = R.mboss = {
-      kind: 'mboss', big: false, def: d, idx: n, id: d.id, spr: 'mboss_' + d.id, size: 48, r: 17, x: U.rnd(60, G.W - 60), y: -30, tx: G.W / 2, ty: 0,
+      kind: 'mboss', big: false, def: d, idx: n, id: d.id, spr: 'mboss_' + d.id, size: 56, r: 20, x: U.rnd(Math.min(60, G.W * 0.3), G.W - Math.min(60, G.W * 0.3)), y: -30, tx: G.W / 2, ty: 0,
       hp, max: hp, state: 'enter', phase: 0, step: 0, t: 0, cool: 1, atk: null, flash: 0, inv: 0, alpha: 1, untargetable: true,
       nameKey: 'mboss.' + d.id + '.name',
     };
@@ -117,6 +117,7 @@
     const R = X.R, G = X.G, p = R.p, mul = tm(b);
     b.t += dt; b.flash = Math.max(0, b.flash - dt); b.inv = Math.max(0, b.inv - dt);
     if (b.burn) { b.burn.t -= dt; b.burnTick = (b.burnTick || 0) - dt; if (b.burnTick <= 0) { b.burnTick = 0.25; X.damage(b, b.burn.dps * 0.25, false, b.x, b.y, { quiet: true }); } if (b.burn && b.burn.t <= 0) b.burn = null; }
+    if (X.tickDots) X.tickDots(b, dt);
     const ease = (k) => { b.x += (b.tx - b.x) * Math.min(1, dt * k); b.y += (b.ty - b.y) * Math.min(1, dt * k); };
     if (b.state === 'enter') { b.ty = Math.max(b.ty, B.minY(b)); ease(1.4); if (Math.abs(b.y - b.ty) < 2) { b.state = 'idle'; b.cool = 0.8; b.untargetable = false; } return; }
     // phase change (bosses only): exactly at 2/3 and 1/3 hp (matches the 3-segment boss bar), no banner (SPEC-31 §2.1)
@@ -141,7 +142,7 @@
           if (A.next <= 0) {
             const sp = 85 + b.phase * 12, guns = b.big ? [-28, 28] : [0];
             for (const ox of guns) {
-              const sx = b.x + ox, sy = m.y, t = NC.enemies.lead(sx, sy, sp), a = Math.atan2(t.y - sy, t.x - sx);
+              const sx = b.x + ox * Math.min(1, X.G.W / 240), sy = m.y, t = NC.enemies.lead(sx, sy, sp), a = Math.atan2(t.y - sy, t.x - sx);
               const n = b.big ? 2 : 1;
               for (let i = -n; i <= n; i++) X.eshoot(sx, sy, a + i * 0.1, sp, 12 * mul, 'eb_small');
             }

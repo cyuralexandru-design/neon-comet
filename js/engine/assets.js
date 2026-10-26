@@ -103,6 +103,7 @@
   }
   // NC.assets.load(onProgress) -> Promise. onProgress(done, total). Never rejects.
   A.load = async (onProgress) => {
+    const hdP = loadHdManifest().catch(() => null);
     const main = await fetchJson(A.manifestUrl);
     const sprites = {};
     const add = (m, base) => { if (m && m.sprites) for (const [id, d] of Object.entries(m.sprites)) sprites[id] = Object.assign({}, d, { _base: d.base || base }); };
@@ -122,12 +123,48 @@
       } else { A.missing.add(id); A.cache[id] = placeholder(id, d); }
       tick();
     }));
+    await hdP;
     A.loaded = true;
     return A;
   };
-  A.has = (id) => !!(A.cache[id] && !A.cache[id].placeholder);
-  // NC.assets.get(id) -> {img,w,h,frames,fps,anchor}. Missing ids get a magenta placeholder (cached).
+  // ---------------------------------------------------------------- 4.0 HD painted art (assets/hd/manifest.json)
+  // manifest = { "<id>": {file, w, h, frames?, fps?} } (also accepts {sprites:{...}}). HD entries replace the pixel sprite of the
+  // same id once loaded (lazy, first use; eager for small gameplay ids). HD sprite object: {img, w, h (= image px, for UI),
+  // lw, lh (= logical draw size), hd:true}. Missing HD -> old pixel sprite (per id fallback).
+  A.hdBase = 'assets/hd/'; A.hdUrl = 'assets/hd/manifest.json'; A.hdMan = {}; A.hdCache = {}; const hdLoading = {};
+  A.hd = (id) => (A.hdMan[id] ? A.hdBase + A.hdMan[id].file : null);
+  // logical size class (SPEC-40 §2): ships 30, bosses 120, mini 56, enemies by EN size, pickups/ores small
+  const LOGI = [[/^ship_/, 30], [/^boss_/, 120], [/^mboss_/, 56], [/^ore_/, 10], [/^pk_crystal$/, 8], [/^pk_xp$/, 8], [/^pk_star$/, 6], [/^pk_/, 14],
+    [/^chest_\d/, 18], [/^tur_/, 16], [/^comp_/, 18], [/^eb_big$/, 10], [/^eb_/, 6]];
+  A.logical = (id) => {
+    const d = declared[id]; if (d) return Math.max(d[0], d[1]);
+    for (const [re, n] of LOGI) if (re.test(id)) return n;
+    const s = A.cache[id]; if (s && !s.placeholder && !s.hd) return Math.max(s.w, s.h);
+    const z = sizeOf(id); return Math.max(z[0], z[1]);
+  };
+  function loadHd(id) {
+    if (hdLoading[id] || !A.hdMan[id] || typeof Image === 'undefined') return hdLoading[id];
+    const d = A.hdMan[id];
+    return hdLoading[id] = loadImg(A.hdBase + d.file).then((img) => {
+      if (!img) { delete A.hdMan[id]; return null; }
+      const frames = d.frames || 1, fw = Math.floor((d.w || img.width) / frames) || img.width / frames, fh = d.h || img.height;
+      const L = A.logical(id), k = L / Math.max(fw, fh);
+      return A.hdCache[id] = { img, w: fw, h: fh, frames, fps: d.fps || 0, lw: fw * k, lh: fh * k, anchor: [fw / 2, fh / 2], url: A.hdBase + d.file, id, hd: true };
+    });
+  }
+  A.preload = (ids) => Promise.all((ids || []).filter(id => A.hdMan[id]).map(loadHd));
+  const EAGER = /^(ship_|en_|mboss_|ore_|pk_|proj_|eb_|fx_|chest_\d|tur_|comp_|sec_\w+_(obj|proj)|sec_mine)/;
+  async function loadHdManifest() {
+    const m = await fetchJson(A.hdUrl); if (!m || typeof m !== 'object') return;
+    const map = m.sprites && typeof m.sprites === 'object' ? m.sprites : m;
+    for (const [id, d] of Object.entries(map)) if (d && d.file) A.hdMan[id] = d;
+    await Promise.all(Object.keys(A.hdMan).filter(id => EAGER.test(id)).map(loadHd));
+  }
+  A.has = (id) => !!(A.hdCache[id] || (A.cache[id] && !A.cache[id].placeholder));
+  // NC.assets.get(id) -> HD sprite when loaded, else {img,w,h,frames,fps,anchor}. Missing ids get a magenta placeholder (cached).
   A.get = (id) => {
+    const h = A.hdCache[id]; if (h) return h;
+    if (A.hdMan[id]) loadHd(id);
     let s = A.cache[id];
     if (!s) { s = A.cache[id] = placeholder(id, A.manifest.sprites[id]); A.missing.add(id); }
     return s;
@@ -140,22 +177,52 @@
     const g = c.getContext('2d'); g.drawImage(s.img, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
     return whiteCache[s.id] = c;
   }
-  // NC.assets.draw(ctx, id, x, y, frame=0, opts={flipX, flipY, alpha, white, topLeft})
-  // (x,y) is the anchor point (sprite center by default). Positions are rounded to integers.
+  // scaled HD cache: one offscreen canvas per (id, logical size, device scale, white) -> drawing is ~1:1 (fast on phones)
+  const scCache = new Map();
+  function scaled(s, lw, lh, wh) {
+    const k = (NC.render && NC.render.k) || 1, key = s.id + '|' + Math.round(lw * 4) + '|' + Math.round(lh * 4) + '|' + k.toFixed(3) + (wh ? 'w' : '');
+    let c = scCache.get(key); if (c) return c;
+    if (scCache.size > 600) scCache.clear();
+    c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(lw * k)); c.height = Math.max(1, Math.ceil(lh * k));
+    const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+    g.drawImage(s.img, 0, 0, s.w, s.h, 0, 0, c.width, c.height);
+    if (wh) { g.globalCompositeOperation = 'source-in'; g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); }
+    scCache.set(key, c); return c;
+  }
+  A.clearScaled = () => scCache.clear();
+  // NC.assets.draw(ctx, id, x, y, frame=0, opts={flipX, flipY, alpha, white, topLeft, scale, rot})
+  // (x,y) is the anchor point (sprite centre by default). HD sprites are drawn at their logical size (lw x lh) with smoothing.
   A.draw = (ctx, id, x, y, frame = 0, opts) => {
     const s = A.get(id); const o = opts || {};
-    const f = ((frame | 0) % s.frames + s.frames) % s.frames;
-    let dx = Math.round(x - (o.topLeft ? 0 : s.anchor[0])), dy = Math.round(y - (o.topLeft ? 0 : s.anchor[1]));
-    const src = o.white ? white(s) : s.img;
     const a = o.alpha == null ? 1 : o.alpha;
     if (a <= 0) return;
     const oldA = ctx.globalAlpha; if (a !== 1) ctx.globalAlpha = oldA * a;
-    if (o.flipX || o.flipY) {
-      ctx.save(); ctx.translate(dx + (o.flipX ? s.w : 0), dy + (o.flipY ? s.h : 0)); ctx.scale(o.flipX ? -1 : 1, o.flipY ? -1 : 1);
-      ctx.drawImage(src, f * s.w, 0, s.w, s.h, 0, 0, s.w, s.h); ctx.restore();
-    } else ctx.drawImage(src, f * s.w, 0, s.w, s.h, dx, dy, s.w, s.h);
+    if (s.hd) {
+      const sc = o.scale || 1, lw = s.lw * sc, lh = s.lh * sc, c = s.frames > 1 ? null : scaled(s, lw, lh, o.white);
+      ctx.imageSmoothingEnabled = true;
+      const f = ((frame | 0) % s.frames + s.frames) % s.frames;
+      if (o.rot || o.flipX || o.flipY) {
+        ctx.save(); ctx.translate(o.topLeft ? x + lw / 2 : x, o.topLeft ? y + lh / 2 : y); if (o.rot) ctx.rotate(o.rot); ctx.scale(o.flipX ? -1 : 1, o.flipY ? -1 : 1);
+        if (c) ctx.drawImage(c, -lw / 2, -lh / 2, lw, lh); else ctx.drawImage(s.img, f * s.w, 0, s.w, s.h, -lw / 2, -lh / 2, lw, lh);
+        ctx.restore();
+      } else {
+        const dx = o.topLeft ? x : x - lw / 2, dy = o.topLeft ? y : y - lh / 2;
+        if (c) ctx.drawImage(c, dx, dy, lw, lh); else ctx.drawImage(s.img, f * s.w, 0, s.w, s.h, dx, dy, lw, lh);
+      }
+      if (a !== 1) ctx.globalAlpha = oldA; return;
+    }
+    ctx.imageSmoothingEnabled = false;
+    const f = ((frame | 0) % s.frames + s.frames) % s.frames, sc = o.scale || 1;
+    const src = o.white ? white(s) : s.img;
+    if (o.rot || o.flipX || o.flipY || sc !== 1) {
+      ctx.save(); ctx.translate(x - (o.topLeft ? 0 : s.anchor[0] * sc) + s.w * sc / 2, y - (o.topLeft ? 0 : s.anchor[1] * sc) + s.h * sc / 2);
+      if (o.rot) ctx.rotate(o.rot); ctx.scale((o.flipX ? -1 : 1) * sc, (o.flipY ? -1 : 1) * sc);
+      ctx.drawImage(src, f * s.w, 0, s.w, s.h, -s.w / 2, -s.h / 2, s.w, s.h); ctx.restore();
+    } else ctx.drawImage(src, f * s.w, 0, s.w, s.h, x - (o.topLeft ? 0 : s.anchor[0]), y - (o.topLeft ? 0 : s.anchor[1]), s.w, s.h);
     if (a !== 1) ctx.globalAlpha = oldA;
   };
+  // logical draw size of a sprite (HD: lw/lh, pixel: w/h)
+  A.size = (id) => { const s = A.get(id); return s.hd ? [s.lw, s.lh] : [s.w, s.h]; };
   // frame index for animated sprites given time in seconds
   A.frameAt = (id, t) => { const s = A.get(id); return s.frames > 1 && s.fps > 0 ? Math.floor(t * s.fps) % s.frames : 0; };
   // URL for DOM <img> (file url, or data URL of the placeholder)
@@ -164,8 +231,8 @@
   A.icon = (id, scale = 1, frame = 0) => {
     const s = A.get(id), k = Math.max(1, Math.round(scale));
     const c = document.createElement('canvas'); c.width = s.w * k; c.height = s.h * k;
-    c.style.imageRendering = 'pixelated';
-    const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+    if (!s.hd) c.style.imageRendering = 'pixelated';
+    const g = c.getContext('2d'); g.imageSmoothingEnabled = !!s.hd;
     g.drawImage(s.img, (frame % s.frames) * s.w, 0, s.w, s.h, 0, 0, s.w * k, s.h * k);
     return c;
   };

@@ -2,7 +2,7 @@
 // Neon Comet 3.1 - game data tables (DATA agent; 3.1 balance/economy changes are marked '3.1'). Pure data + tiny pure helpers, no DOM.
 // All user-facing names are i18n keys (NC.t). All numbers used by systems/engine live here.
 (function (NC) {
-  NC.VERSION = '3.1.0';
+  NC.VERSION = '4.0.0';
 
   // ---- small shared helpers (kept from v2, pure) ----
   NC.TAU = Math.PI * 2;
@@ -47,13 +47,43 @@
   // 40-50 Ultra. Each tier above the base gives +15% (tierMult) on top of the normal per-level bonus.
   // Upgrade cost of lvl -> lvl+1 = base[r] * upCurve(lvl) (one curve for all kinds, ~x150 at lvl 49, sum to 50 ~ x1950).
   // =====================================================================
-  D.MAX_LVL = 50;
+  // 4.0 (SPEC-40 §3): LEVEL IS PER CATEGORY (ship, weapon, secondary, turret, comp, armor, gen, core, boost; + crew in story).
+  // Level 1..150, tier from level: 1-29 Common, 30-59 Rare, 60-89 Epic, 90-119 Legendary, 120-150 Ultra. Every item of the
+  // category shows the category tier. Each tier gives +15% (tierMult) on top of the per-level bonus. baseR args are ignored now
+  // (kept so old callers keep working).
+  D.MAX_LVL = 150;
+  D.OLD_MAX_LVL = 50;                       // v4 save scale (migration maps old 50 -> 150)
+  D.CAT_TIER_AT = [1, 30, 60, 90, 120];
   D.TIER_STEP = 0.15;
-  D.tierFromLevel = l => Math.max(0, Math.min(4, Math.floor((l || 0) / 10)));
-  D.tierFor = (baseR, lvl) => Math.max(baseR | 0, D.tierFromLevel(lvl));
-  D.tierMult = (baseR, lvl) => 1 + D.TIER_STEP * (D.tierFor(baseR, lvl) - (baseR | 0));
-  D.nextTierLvl = (baseR, lvl) => { const t = D.tierFor(baseR, lvl); return t >= 4 ? null : (t + 1) * 10; }; // level that reaches the next tier
-  D.upCurve = l => (1 + 0.22 * (l - 1)) * Math.pow(1.055, l - 1);
+  D.tierFromLevel = l => Math.max(0, Math.min(4, Math.floor((l || 0) / 30)));
+  D.tierFor = (baseR, lvl) => D.tierFromLevel(lvl);
+  D.tierMult = (baseR, lvl) => 1 + D.TIER_STEP * D.tierFromLevel(lvl);
+  D.nextTierLvl = (baseR, lvl) => { const t = D.tierFromLevel(lvl); return t >= 4 ? null : D.CAT_TIER_AT[t + 1]; };
+  D.upCurve = l => (1 + 0.22 * (l - 1)) * Math.pow(1.055, l - 1);   // 3.3 curve, unused by 4.0 costs (kept for tools)
+
+  // ---- 4.0 ORES: one per category (art 11_ores.png order). col = UI accent.
+  D.ORES = [
+    { id: 'ore_armor', cat: 'armor', col: '#a89a86' }, { id: 'ore_gen', cat: 'gen', col: '#5fb8b0' },
+    { id: 'ore_core', cat: 'core', col: '#e08a4a' }, { id: 'ore_boost', cat: 'boost', col: '#8fc4e8' },
+    { id: 'ore_weapon', cat: 'weapon', col: '#c0504a' }, { id: 'ore_secondary', cat: 'secondary', col: '#78a86c' },
+    { id: 'ore_turret', cat: 'turret', col: '#c8a55a' }, { id: 'ore_companion', cat: 'comp', col: '#9a78b8' },
+    { id: 'ore_ship', cat: 'ship', col: '#c8ccd4' }, { id: 'ore_crew', cat: 'crew', col: '#e0b0e0' },
+  ];
+  for (const o of D.ORES) { o.nameKey = 'ore.' + o.id + '.name'; o.descKey = 'ore.' + o.id + '.desc'; o.icon = o.id; o.sprite = o.id; }
+  D.CATS = ['ship', 'weapon', 'secondary', 'turret', 'comp', 'armor', 'gen', 'core', 'boost'];   // hangar categories (crew = story)
+  D.CAT_ORE = {}; for (const o of D.ORES) D.CAT_ORE[o.cat] = o.id;
+  D.CAT_ALIAS = { companion: 'comp', comps: 'comp', ships: 'ship', weapons: 'weapon', turrets: 'turret', booster: 'boost' };
+  // upgrade cost of category level L -> L+1: ore of that category + a small crystal cost. null at 150.
+  // Totals per category: to 30 = 169 ore / 3.3k cr (~3-4 days), to 60 ~ 900 ore, to 90 ~ 2.8k, to 120 ~ 6.8k, to 150 ~ 13.6k ore (months).
+  D.oreCost = L => Math.round(2 + 0.15 * L + 0.0016 * Math.pow(L, 2.4));
+  D.crCost = L => Math.round(30 + 3 * L + 0.03 * Math.pow(L, 2.2));
+  D.catCost = L => (L >= D.MAX_LVL ? null : { ore: D.oreCost(L), cr: D.crCost(L) });
+  // ore income. Run: total = (kills*k + bosses*b + mbosses*m + elites*e + sector*s) * diff * (1 + sectorK*sector), then split over the 9
+  // hangar ores by weight (gear ores a bit more). Engine may instead add ores live (NC.sys.addOre) and pass r.ores to endRun.
+  D.ORE_RUN = { kill: 0.04, boss: 8, mboss: 3, elite: 0.5, sector: 2, sectorK: 0.1, min: 3,
+    diff: { easy: 0.7, normal: 1, hard: 1.4, nightmare: 2 },
+    w: { ship: 0.8, weapon: 1, secondary: 0.9, turret: 0.9, comp: 0.9, armor: 1.1, gen: 1.1, core: 1.1, boost: 1.1 } };
+  D.DUP_ORE = 12;                           // a duplicate gear variant (chest/sell) -> this much ore of its category (x (1+chest r))
 
   // =====================================================================
   // PLAYER BASE + ACCOUNT LEVEL
@@ -71,11 +101,12 @@
   // mult: base multipliers; perk.mods are applied by computeStats, perk.flags are for the engine.
   // =====================================================================
   // 3.3: max 50 for every rarity; totals ~ 3.1 (r1 to 20 ~96k, r3 to 40 ~2.4M, r4 to 50 ~8.8M; r0 to 50 ~1M)
+  // 4.0: per = old per x 49/149 (old lvl 50 power == new lvl 150); cost = crystal part of D.catCost (real upgrade = NC.sys.upgradeCat)
   D.SHIP_UP = {
-    per: 0.04,                                  // +4% to multipliers per level
+    per: 0.0132,
     maxLvl: () => D.MAX_LVL,
-    base: [500, 900, 1600, 2800, 4500],         // cost of level 1->2 by base rarity
-    cost: (r, lvl) => Math.round(D.SHIP_UP.base[r] * D.upCurve(lvl)),
+    base: [500, 900, 1600, 2800, 4500],
+    cost: (r, lvl) => (D.catCost(lvl) || { cr: null }).cr,
   };
   const ship = (id, r, price, hp, atk, shd, rate, speed, perk) => ({
     id, r, price, nameKey: 'ship.' + id + '.name', perkKey: 'ship.' + id + '.perk', sprite: 'ship_' + id,
@@ -109,9 +140,9 @@
   // power = effective dps factor used for the power rating (accounts for pierce/aoe/cone).
   // =====================================================================
   D.WEAPON_UP = {
-    per: 0.05, maxLvl: 50,                       // 3.3: 30 -> 50
+    per: 0.0164, maxLvl: 150,                    // 4.0 category level
     base: [600, 1000, 1600, 2600, 4000],
-    cost: (r, lvl) => Math.round(D.WEAPON_UP.base[r] * D.upCurve(lvl)),
+    cost: (r, lvl) => (D.catCost(lvl) || { cr: null }).cr,
   };
   // 3.3: 11 weapons. Fields read by the engine: dmg (x ship atk per projectile), rate (shots or bursts /s), speed, pierce,
   // plus per-weapon behaviour fields (burst, pellets, cone, chain, beam, ramp, orbit...). power = dps factor for the rating
@@ -187,7 +218,7 @@
   // 6.3 TURRETS & COMPANIONS
   // =====================================================================
   // 3.3: max 50; cost = base[r] * upCurve(lvl) (r3 to 20 ~374k like 3.1, to 50 ~6.8M)
-  D.TURRET_UP = { per: 0.08, maxLvl: 50, base: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => Math.round(D.TURRET_UP.base[r] * D.upCurve(lvl)) };
+  D.TURRET_UP = { per: 0.0263, maxLvl: 150, base: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => (D.catCost(lvl) || { cr: null }).cr };
   D.TURRETS = [
     { id: 'pulse', r: 0, price: 3000, count: 1, dmg: 0.35, rate: 2.5, kind: 'laser', power: 0.9 },
     { id: 'rocket', r: 1, price: 9000, count: 1, dmg: 1.0, rate: 0.8, kind: 'missile', aoe: 20, power: 1.4 },
@@ -195,7 +226,7 @@
     { id: 'beam', r: 3, price: 40000, count: 1, dmg: 0.25, rate: 10, kind: 'beam', power: 3.0 },
   ];
   for (const t of D.TURRETS) { t.nameKey = 'tur.' + t.id + '.name'; t.descKey = 'tur.' + t.id + '.desc'; t.sprite = 'tur_' + t.id; t.icon = 'icon_tur_' + t.id; }
-  D.COMP_UP = { base: 2 / 3, per: 0.03, maxLvl: 50, costBase: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => Math.round(D.COMP_UP.costBase[r] * D.upCurve(lvl)) }; // dmg frac = 2/3 * (1 + 3%*(lvl-1)) * tierMult
+  D.COMP_UP = { base: 2 / 3, per: 0.0099, maxLvl: 150, costBase: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => (D.catCost(lvl) || { cr: null }).cr }; // dmg frac = 2/3 * (1 + 3%*(lvl-1)) * tierMult
   D.COMPANIONS = [
     { id: 'wing', r: 0, price: 4000, guns: 1 },
     { id: 'orb', r: 1, price: 12000, guns: 1, homing: true },
@@ -209,7 +240,7 @@
   // dmg = x ship atk per hit, cd = seconds between activations, power = dps factor (x atk) for the rating.
   // computeStats().secondary = { id, lvl, mult, def } (mult = level bonus x tier bonus, multiply dmg by it).
   // =====================================================================
-  D.SEC_UP = { per: 0.08, maxLvl: 50, base: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => Math.round(D.SEC_UP.base[r] * D.upCurve(lvl)) };
+  D.SEC_UP = { per: 0.0263, maxLvl: 150, base: [700, 1300, 2200, 3500, 5000], cost: (r, lvl) => (D.catCost(lvl) || { cr: null }).cr };
   D.SECONDARY = [
     { id: 'homing', r: 0, price: 5000, dmg: 1.2, cd: 2, count: 2, speed: 180, homing: 4, aoe: 14, power: 1.3 },        // 2 homing micro-missiles
     { id: 'mines', r: 0, price: 6000, dmg: 3.0, cd: 3, count: 1, aoe: 34, life: 8, trigger: 26, power: 1.2 },          // mine dropped behind the ship
@@ -247,15 +278,64 @@
     { id: 'magnet', base: 3, statKey: 'stat.magnet' }, // logical px
   ];
   D.extraValue = (e, r, lvl) => e.q * D.EXTRA_STATS.find(x => x.id === e.id).base * (1 + 0.6 * r) * (1 + 0.08 * (lvl - 1));
+  // ---- 4.0 GEAR VARIANTS (SPEC-40 §3): 4 per slot. main = {stat, base, g}: value = base * (1 + g*(L-1)) * tierMult(L), L = category
+  // level (flat hp/shd/magnet px; everything else a fraction, dashCd negative = shorter). bonus[k] (k = 0..4) is active when the
+  // category tier >= k. Stats: computeStats mods (atk hp shd rate speed crit critDmg dashCd regen cr xp hpPct magnet) + engine extras
+  // (armor = damage taken -x, dodge = chance to ignore a hit, thorns = x of contact damage reflected, bossDmg = +x vs bosses/mini-bosses,
+  // ore = +x ore from runs). hp/shd as BONUS lines are percentages (hpPct / shd), main hp/shd are flat.
+  const GV = (slot, id, set, main, lines) => ({ id, slot, cat: slot, set, main, nameKey: 'gv.' + slot + '.' + id + '.name', descKey: 'gv.' + slot + '.' + id + '.desc',
+    sprite: 'gear_' + slot + '_' + id, icon: 'gear_' + slot + '_' + id,
+    bonus: lines.map((l, k) => ({ tier: k, stat: l[0], v: l[1], textKey: 'gstat.' + l[0] })) });
+  D.GEAR_VARIANTS = {
+    armor: [
+      GV('armor', 'titan', 'titan', { stat: 'hp', base: 36, g: 0.08 }, [['hpPct', 0.05], ['regen', 0.10], ['hpPct', 0.08], ['armor', 0.05], ['hpPct', 0.15]]),
+      GV('armor', 'reactive', 'tezaur', { stat: 'hp', base: 28, g: 0.08 }, [['thorns', 0.20], ['atk', 0.04], ['thorns', 0.40], ['critDmg', 0.20], ['atk', 0.10]]),
+      GV('armor', 'crystal', 'prisma', { stat: 'hp', base: 26, g: 0.08 }, [['shd', 0.06], ['regen', 0.12], ['shd', 0.10], ['cr', 0.08], ['shd', 0.20]]),
+      GV('armor', 'void', 'fantoma', { stat: 'hp', base: 24, g: 0.08 }, [['atk', 0.04], ['crit', 0.03], ['dodge', 0.03], ['bossDmg', 0.10], ['atk', 0.12]]),
+    ],
+    gen: [
+      GV('gen', 'bastion', 'titan', { stat: 'shd', base: 22, g: 0.08 }, [['shd', 0.05], ['regen', 0.10], ['armor', 0.04], ['hpPct', 0.08], ['shd', 0.18]]),
+      GV('gen', 'prism', 'prisma', { stat: 'shd', base: 18, g: 0.08 }, [['crit', 0.02], ['critDmg', 0.15], ['crit', 0.04], ['atk', 0.06], ['critDmg', 0.40]]),
+      GV('gen', 'pulse', 'tezaur', { stat: 'shd', base: 16, g: 0.08 }, [['rate', 0.03], ['regen', 0.15], ['rate', 0.05], ['thorns', 0.30], ['rate', 0.10]]),
+      GV('gen', 'ward', 'fantoma', { stat: 'shd', base: 20, g: 0.08 }, [['regen', 0.10], ['dodge', 0.02], ['regen', 0.15], ['armor', 0.06], ['dodge', 0.05]]),
+    ],
+    core: [
+      GV('core', 'fusion', 'titan', { stat: 'atk', base: 0.03, g: 0.02 }, [['atk', 0.03], ['hpPct', 0.05], ['atk', 0.05], ['bossDmg', 0.08], ['atk', 0.10]]),
+      GV('core', 'quantum', 'prisma', { stat: 'crit', base: 0.02, g: 0.02 }, [['critDmg', 0.10], ['rate', 0.03], ['crit', 0.03], ['critDmg', 0.25], ['crit', 0.06]]),
+      GV('core', 'star', 'tezaur', { stat: 'cr', base: 0.05, g: 0.02 }, [['xp', 0.05], ['cr', 0.05], ['ore', 0.05], ['xp', 0.10], ['ore', 0.12]]),
+      GV('core', 'voidr', 'fantoma', { stat: 'rate', base: 0.03, g: 0.02 }, [['atk', 0.03], ['rate', 0.03], ['bossDmg', 0.10], ['crit', 0.03], ['rate', 0.08]]),
+    ],
+    boost: [
+      GV('boost', 'ion', 'titan', { stat: 'speed', base: 0.03, g: 0.02 }, [['dashCd', -0.05], ['speed', 0.03], ['dashCd', -0.08], ['rate', 0.04], ['speed', 0.08]]),
+      GV('boost', 'after', 'fantoma', { stat: 'dashCd', base: -0.04, g: 0.02 }, [['speed', 0.03], ['dodge', 0.02], ['dashCd', -0.06], ['atk', 0.05], ['dodge', 0.04]]),
+      GV('boost', 'warp', 'tezaur', { stat: 'magnet', base: 4, g: 0.02 }, [['xp', 0.05], ['magnet', 6], ['cr', 0.06], ['ore', 0.05], ['magnet', 14]]),
+      GV('boost', 'phase', 'prisma', { stat: 'dodge', base: 0.02, g: 0.02 }, [['crit', 0.02], ['dashCd', -0.05], ['dodge', 0.03], ['critDmg', 0.20], ['dodge', 0.05]]),
+    ],
+  };
+  D.GEAR_VARIANT_LIST = [].concat(D.GEAR_VARIANTS.armor, D.GEAR_VARIANTS.gen, D.GEAR_VARIANTS.core, D.GEAR_VARIANTS.boost);
+  D.gearVariant = (slot, id) => (D.GEAR_VARIANTS[slot] || []).find(v => v.id === id) || null;
+  D.FLAT_STATS = { hp: 1, shd: 1, magnet: 1 };   // main values that are flat (bonus lines with hp/shd are % -> hpPct / shd%)
+  D.EXTRA_CAPS = { armor: 0.5, dodge: 0.35 };
+  D.variantMain = (v, L) => v.main.base * (1 + v.main.g * (Math.max(1, L) - 1)) * D.tierMult(0, L);
+  // UI helper: '+12%' / '+40' / '-8%' for a stat value (flat = main of hp/shd/magnet)
+  D.statTxt = (stat, v, flat) => { const s = v < 0 ? '-' : '+', a = Math.abs(v); return flat ? s + Math.round(a) : s + (a * 100 >= 10 ? Math.round(a * 100) : (a * 100).toFixed(1)) + '%'; };
+  // sets: 4 variants (one per slot) each; bonuses cumulative (4 pieces = b2 + b4)
   D.SETS = [
-    { id: 'titan', nameKey: 'set.titan.name', b2: { hpPct: 0.10 }, b4: { hpPct: 0.20, regen: 0.25 } },
-    { id: 'fantoma', nameKey: 'set.fantoma.name', b2: { crit: 0.08 }, b4: { speed: 0.15, dashCd: -0.20 } },
-    { id: 'tezaur', nameKey: 'set.tezaur.name', b2: { cr: 0.15 }, b4: { cr: 0.30, xp: 0.20 } },
-  ]; // bonuses are cumulative: 4 pieces get b2 + b4
+    { id: 'titan', nameKey: 'set.titan.name', b2: { hpPct: 0.10 }, b4: { hpPct: 0.15, regen: 0.25 } },
+    { id: 'prisma', nameKey: 'set.prisma.name', b2: { crit: 0.05 }, b4: { critDmg: 0.30, crit: 0.05 } },
+    { id: 'fantoma', nameKey: 'set.fantoma.name', b2: { dodge: 0.03 }, b4: { speed: 0.10, dashCd: -0.15, dodge: 0.03 } },
+    { id: 'tezaur', nameKey: 'set.tezaur.name', b2: { cr: 0.10 }, b4: { cr: 0.20, xp: 0.15, ore: 0.10 } },
+  ];
+  for (const s of D.SETS) s.pieces = D.GEAR_VARIANT_LIST.filter(v => v.set === s.id).map(v => v.slot + '.' + v.id);
+  // v4 -> v5: old gear (slot, extras) -> nearest variant. Picks by the item's strongest old extra stat, else the first variant.
+  D.GEAR_MIGRATE = { armor: { crit: 'void', rate: 'void', xp: 'crystal', regen: 'titan', magnet: 'crystal', _: 'titan' },
+    gen: { crit: 'prism', rate: 'pulse', xp: 'ward', regen: 'bastion', magnet: 'ward', _: 'bastion' },
+    core: { crit: 'quantum', rate: 'voidr', xp: 'star', regen: 'fusion', magnet: 'star', _: 'star' },
+    boost: { crit: 'phase', rate: 'ion', xp: 'warp', regen: 'after', magnet: 'warp', _: 'ion' } };
   // name list: GEAR_NAMES[slot][rarity] = array of i18n keys; item.nameKey picks one
   D.GEAR_NAMES = {};
   for (const s of D.GEAR_SLOTS) D.GEAR_NAMES[s.id] = D.RARITY.map((_, r) => ['a', 'b'].map(x => 'gear.name.' + s.id + '.' + r + '.' + x));
-  D.gearSprite = (slot, r) => 'gear_' + slot + '_' + r;
+  D.gearSprite = (slot, x) => 'gear_' + slot + '_' + (typeof x === 'string' ? x : (D.GEAR_VARIANTS[slot] || [{ id: x }])[0].id); // 4.0: variant id
 
   // =====================================================================
   // 6.7 CONSUMABLES
@@ -281,6 +361,10 @@
     { r: 3, price: 30000, items: 4, w: [0, 0, 55, 42, 3], bonusCr: [1300, 2700], cons: 2 },
     { r: 4, price: 70000, items: 5, w: [0, 0, 0, 70, 30], bonusCr: [3300, 6000], cons: 3 },
   ];
+  // 4.0: items = gear variants (rarity roll only colours the reveal; a variant you own -> DUP_ORE x (1+roll) ore). ores = [min,max] total
+  // extra ore split over random hangar categories.
+  const CHEST_ORES = [[6, 10], [14, 22], [30, 45], [60, 90], [120, 170]];
+  for (const c of D.CHESTS) c.ores = CHEST_ORES[c.r];
   for (const c of D.CHESTS) { c.nameKey = 'chest.' + c.r + '.name'; c.sprite = 'chest_' + c.r; c.openSprite = 'chest_open_' + c.r; }
   D.PITY = { after: 10, minChest: 2, guarantee: 3 }; // after 10 epic+ chests w/o legendary+, next epic+ chest gives a legendary item
 
@@ -305,6 +389,44 @@
   // evo cards: legendary, the final (evolving) level is shown as ultra (rMax). max 5 -> 3 so evolution stays reachable with
   // the slower 3.1 card rate; high w = most of the legendary share goes to the evo card of the equipped weapon.
   for (const w of D.WEAPONS) D.CARDS.push(card('evo_' + w.id, 3, 3, 14, 0.08, { weapon: w.id, evo: w.evo.id, rMax: 4 }));
+  // existing cards: engine keeps its own switch(id); fx documents it
+  for (const c of D.CARDS) c.fx = c.evo ? { type: 'evo' } : { type: 'legacy', id: c.id };
+  // ---- 4.0 new cards (SPEC-40 §4). val = per level; fx = exact effect at card level n (engine reads fx; see NOTES/40-data.md).
+  // atk = player atk (R.st.atk with run mods), hit = damage of the hit that triggered it. All chances per hit unless noted.
+  D.CARDS.push(
+    // attack
+    card('explosive', 2, 3, 5, 0.35, { fx: { type: 'explode', radius: 18, radiusPer: 6, dmgPer: 0.35 } }),            // hit -> aoe r=18+6n px, dmg 0.35n x hit
+    card('burn', 1, 4, 5, 0.15, { fx: { type: 'dot', kind: 'burn', dpsPer: 0.15, dur: 2, stacks: 1 } }),               // hit ignites 2 s, 0.15n x atk /s (refresh, no stack)
+    card('freeze', 2, 3, 5, 0.08, { fx: { type: 'freeze', chancePer: 0.08, dur: 1.2, bossSlow: 0.4, bossDur: 1.2 } }), // 8n% hit freezes 1.2 s; bosses -40% speed
+    card('poison', 1, 4, 5, 0.04, { fx: { type: 'dot', kind: 'poison', dpsPer: 0.04, dur: 4, stacks: 5, stacksPer: 1 } }), // +1 stack/hit (max 5+n), 0.04n x atk /s per stack
+    card('chain', 2, 3, 5, 0.12, { fx: { type: 'chain', chancePer: 0.12, jumps: 2, dmg: 0.5, range: 80 } }),           // 12n% hit jumps to 2 foes (80 px) at 50%
+    card('split', 2, 3, 4, 1, { fx: { type: 'split', shards: 2, shardsPer: 1, dmg: 0.4 } }),                            // kill -> (1+n) shards 40% hit dmg, random dirs
+    card('giant', 1, 3, 4, 0.25, { fx: { type: 'giant', sizePer: 0.25, dmgPer: 0.08, speedPer: -0.05 } }),            // projectile size +25n%, dmg +8n%, speed -5n%
+    // survival / utility
+    card('armor', 0, 5, 6, 0.06, { fx: { type: 'stat', stat: 'armor', per: 0.06, cap: 0.5 } }),                        // damage taken -6n% (cap 50% with gear)
+    card('shieldregen', 1, 4, 6, 0.25, { fx: { type: 'stat', stat: 'shdRegen', per: 0.25, delayPer: -0.3 } }),         // shield regen +25n%, regen delay -0.3n s (min 1 s)
+    card('dodge', 2, 3, 5, 0.05, { fx: { type: 'stat', stat: 'dodge', per: 0.05, cap: 0.35 } }),                       // 5n% ignore a hit (cap 35%)
+    card('dashcd', 0, 4, 5, 0.10, { fx: { type: 'stat', stat: 'dashCd', per: -0.10 } }),                               // dash cooldown x(1-0.10n) (min 0.4 total)
+    card('thorns', 1, 4, 4, 0.5, { fx: { type: 'thorns', reflectPer: 0.5, minAtk: 1 } }),                              // attacker takes 0.5n x damage you took (>= 1 x atk), bullets: nearest foe
+    card('crystalbonus', 0, 3, 4, 0.10, { fx: { type: 'stat', stat: 'cr', per: 0.10 } }),                             // run crystals +10n%
+    card('xpboost', 0, 3, 4, 0.10, { fx: { type: 'stat', stat: 'xp', per: 0.10 } }),                                   // run xp +10n%
+    card('secondwind', 3, 1, 4, 0.3, { fx: { type: 'secondwind', hp: 0.3, invuln: 2, uses: 1 } }),                      // once/run: lethal hit -> 30% hp, 2 s invulnerable
+    card('dronehelper', 3, 3, 5, 1, { fx: { type: 'drone', count: 1, countPer: 1, dmg: 0.35, rate: 2, range: 160 } }),   // n drones orbiting, each 0.35 x atk, 2 shots/s
+    card('overdrive', 2, 3, 5, 0.15, { fx: { type: 'overdrive', hpBelow: 0.4, dmgPer: 0.15, ratePer: 0.10 } }),        // hp < 40%: dmg +15n%, rate +10n%
+  );
+  // ---- 4.0 special cards (art 605): real offerable specials, max 1, low weight, only from run level minLvl. sprite card_sp_<id>.
+  const sp = (id, r, w, fx) => card('sp_' + id, r, 1, w, 1, { special: true, minLvl: 6, sprite: 'card_sp_' + id, fx });
+  D.CARDS.push(
+    sp('chain', 3, 2, { type: 'sp_chain', every: 4, targets: 6, dmg: 2.0, range: 140 }),                               // every 4 s lightning chains through 6 foes, 2 x atk each
+    sp('blackhole', 4, 2, { type: 'sp_blackhole', every: 12, dur: 3, radius: 70, pull: 140, dps: 1.0, burst: 5.0 }),     // every 12 s at densest spot: pull 3 s, 1 x atk/s, ends 5 x atk
+    sp('shieldnova', 3, 2, { type: 'sp_shieldnova', cd: 8, radius: 110, dmg: 4.0, push: 200, refill: 0.3 }),            // shield breaks -> nova 4 x atk, push; refills 30% shield; cd 8 s
+    sp('phoenix', 4, 2, { type: 'sp_phoenix', uses: 1, hp: 0.5, radius: 150, dmg: 10, invuln: 3 }),                     // once/run on death: revive 50% hp, blast 10 x atk, 3 s invuln
+    sp('timewarp', 4, 2, { type: 'sp_timewarp', every: 20, dur: 4, slow: 0.5 }),                                       // every 20 s enemies + enemy bullets x0.5 speed for 4 s
+    sp('overcharge', 3, 2, { type: 'sp_overcharge', every: 15, dur: 5, rate: 2.0, dmg: 0.30 }),                         // every 15 s for 5 s: fire rate x2, dmg +30%
+    sp('vampfield', 3, 2, { type: 'sp_vampfield', radius: 80, dps: 0.6, heal: 0.01 }),                                  // aura 80 px 0.6 x atk/s; heals 1% of aura dmg (cap D.HEAL.vampPerSec)
+    sp('frost', 3, 2, { type: 'sp_frost', every: 10, radius: 120, freeze: 2, dmg: 2.0, bossSlow: 0.5 }),                 // every 10 s ring: 2 x atk, freeze 2 s (bosses -50% 2 s)
+  );
+  D.cardById = id => D.CARDS.find(c => c.id === id) || null;
   D.CARD_RARITY_W = [46, 28, 16, 8, 2];   // Common, Rare, Epic, Legendary, Ultra (ultra: 3.2 special cards)
   D.cardRarity = (c, lvl) => (c.rMax != null && lvl >= c.max ? c.rMax : c.r); // rarity to show for the offered level
   // avail = card defs that can still be offered -> [[card, weight]]; each rarity gets CARD_RARITY_W[r] split by w,
@@ -433,7 +555,7 @@
   const fam = (id, stat, goals, crs, chests) => goals.map((g, i) => ({
     id: id + '_' + 'bsg'[i], fam: id, tier: i, tierKey: 'tier.' + D.ACH_TIERS[i], stat, goal: g,
     nameKey: 'ach.' + id + '.name', descKey: 'ach.' + id + '.desc',
-    reward: Object.assign({ cr: crs[i] }, chests[i] != null ? { chest: chests[i] } : {}),
+    reward: Object.assign({ cr: crs[i], oreAny: [20, 60, 150][i] }, chests[i] != null ? { chest: chests[i] } : {}),   // 4.0 oreAny = ore split over random categories
   }));
   // 3.1 economy: crystal rewards / 3 (chests unchanged); 'rich' goals / 3 because income is / 3
   D.ACHIEVEMENTS = [].concat(
@@ -478,11 +600,11 @@
   ];
   for (const m of D.MISSIONS) m.descKey = 'mission.' + m.id + '.desc';
   // 3.1 economy: mission / daily / offline crystals / 3 (chests and consumables unchanged)
-  D.MISSION_REWARD = [{ cr: 300 }, { cr: 500 }, { cr: 800, chest: 1 }];
-  D.MISSION_BONUS = { cr: 500, chest: 0 }; // all 3 done
+  D.MISSION_REWARD = [{ cr: 300, oreAny: 10 }, { cr: 500, oreAny: 20 }, { cr: 800, chest: 1, oreAny: 35 }];   // 4.0 + ores
+  D.MISSION_BONUS = { cr: 500, chest: 0, oreAny: 30 }; // all 3 done
   D.DAILY = [ // 7-day login cycle, repeats; streak resets if a day is missed
-    { cr: 300 }, { cr: 500 }, { cr: 700, cons: { repair: 1 } }, { cr: 1000 },
-    { cr: 1300, chest: 1 }, { cr: 1700, cons: { x2: 1 } }, { cr: 2700, chest: 2 },
+    { cr: 300, oreAny: 10 }, { cr: 500, oreAny: 15 }, { cr: 700, cons: { repair: 1 }, oreAny: 20 }, { cr: 1000, oreAny: 25 },
+    { cr: 1300, chest: 1, oreAny: 30 }, { cr: 1700, cons: { x2: 1 }, oreAny: 40 }, { cr: 2700, chest: 2, oreAny: 60 },
   ];
   D.OFFLINE = { capH: 8, minMin: 10, perHour: [270, 430, 630, 870, 1130, 1430, 1730], perHourExtra: 300 };
   D.offlineRate = s => s < D.OFFLINE.perHour.length ? D.OFFLINE.perHour[s] : D.OFFLINE.perHour[D.OFFLINE.perHour.length - 1] + D.OFFLINE.perHourExtra * (s - D.OFFLINE.perHour.length + 1);

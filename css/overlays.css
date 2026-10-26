@@ -1,7 +1,7 @@
 /* Neon Comet 3.1 - overlays (agent "overlays"): loader, pause, level-up cards, revive, game over, chests, popups, tutorial.
    Palette B tokens from core. Scale: --ovk = CSS px per design px (1 at 844x390). Classes prefixed "ov-". */
-:root { --ovk: min(calc(100vh / 390), calc(100vw / 780), 2.2px); }
-@supports (height: 100dvh) { :root { --ovk: min(calc(100dvh / 390), calc(100dvw / 780), 2.2px); } }
+:root { --ovk: min(calc(min(100vw, 480px) / 390), calc(100vh / 700), 1.4px); }
+@supports (height: 100dvh) { :root { --ovk: min(calc(min(100dvw, 480px) / 390), calc(100dvh / 700), 1.4px); } }
 .ov, .ov-mod, .ov-loader, .ov-tut {
   --fs-s: max(11px, calc(var(--ovk) * 11)); --fs-b: max(11.5px, calc(var(--ovk) * 12.5)); --fs-v: max(13px, calc(var(--ovk) * 15));
   --fs-t: max(16px, calc(var(--ovk) * 20)); --ch: calc(var(--ovk) * 7);
@@ -248,3 +248,55 @@
 @keyframes ovFoilB { 0% { background-position: 0% 50%; } 100% { background-position: 220% 50%; } }
 @keyframes ovPulse { from { opacity: 1; } to { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .ov-rays, .ov-cw.sp .ov-card, .ov-cin::after, .ov-chest.shake { animation: none !important; } }
+
+/* ===================== 4.0 PORTRAIT (390x844 design, --ovk = 1 there; desktop = centred 480 column) ===================== */
+#screens > .scr.ov > * { width: 100%; max-width: 480px; margin-left: auto; margin-right: auto; }
+.ov img.hd, .ov-mod img.hd, .ov-loader img.hd { image-rendering: auto; }
+.ov-head { flex-wrap: wrap; row-gap: calc(var(--ovk) * 6); }
+/* loader: HD logo above the bar */
+.ov-ld-logo { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); width: min(82vw, 400px); height: auto; filter: drop-shadow(0 8px 24px rgba(0,0,0,.6)); animation: ovLogoIn 1.2s ease-out both; }
+@keyframes ovLogoIn { from { opacity: 0; transform: translate(-50%, 12px) scale(.96); } }
+/* pause: stacked (stats, skills, toggles, buttons) */
+.ov-pz { flex-direction: column; overflow-y: auto; }
+.ov-pz-l { flex: 0 0 auto; order: 2; }
+.ov-pz-r { flex: 0 0 auto; order: 1; }
+.ov-skills { flex: 0 0 auto; }
+.ov-sklist { max-height: calc(var(--ovk) * 140); }
+.ov-btns { margin-top: 0; }
+.ov-btns .btn { min-height: calc(var(--ovk) * 48); }
+/* level-up cards: 3 stacked horizontal cards; mini HD card (art + cardframe_r<r>) on the left */
+.ov-ch { flex-wrap: wrap; row-gap: calc(var(--ovk) * 4); }
+.ov-cards { flex-direction: column; align-items: stretch; justify-content: center; gap: calc(var(--ovk) * 10); }
+.ov-cw { width: 100%; height: auto; min-height: calc(var(--ovk) * 150); max-height: calc(33% - var(--ovk) * 8); flex: 1 1 0; }
+.ov-cin { flex-direction: row !important; flex-wrap: wrap; align-content: flex-start; column-gap: calc(var(--ovk) * 10); padding: calc(var(--ovk) * 6) !important; }
+.ov-art { order: -1; flex: 0 0 calc(var(--ovk) * 96) !important; width: calc(var(--ovk) * 96); height: calc(100% - 0px); min-height: calc(var(--ovk) * 130); align-self: stretch; background: var(--bg); }
+.ov-art > img { position: absolute; inset: 6%; width: 88% !important; height: 88% !important; object-fit: cover !important; }
+.ov-art > img.ov-cfr { inset: 0; width: 100% !important; height: 100% !important; object-fit: fill !important; z-index: 2; filter: none !important; }
+.ov-art:has(.ov-cfr)::after { display: none; }
+.ov-ctop, .ov-cnm, .ov-cds, .ov-clv, .ov-pips { flex: 1 1 calc(100% - var(--ovk) * 110); max-width: calc(100% - var(--ovk) * 106); text-align: left !important; justify-content: space-between; }
+.ov-cnm { font-size: calc(var(--ovk) * 17); }
+.ov-cds { min-height: 0; font-size: max(12px, calc(var(--ovk) * 13)); }
+.ov-pips { justify-content: flex-start; }
+.ov-cw:hover, .ov-cw.pad-focus { transform: translateX(calc(var(--ovk) * 4)); }
+.ov-cf { flex-wrap: wrap; padding-right: calc(var(--ovk) * 70); } /* room for the hidden auto zone bottom-right */
+.ov-cardsx { position: absolute; }
+/* revive */
+.ov-revive { justify-content: center; align-items: center; }
+.ov-rv .btn { min-height: calc(var(--ovk) * 50); }
+/* game over: stacked */
+.ov-ov { flex-direction: column; overflow-y: auto; }
+.ov-ov-l { flex: 0 0 auto; }
+.ov-shipbox { min-height: calc(var(--ovk) * 110); }
+.ov-shipbox img.hd { height: calc(var(--ovk) * 100); }
+.ov-acts { flex-wrap: wrap; justify-content: stretch; gap: calc(var(--ovk) * 6); }
+.ov-acts .btn { flex: 1 1 45%; justify-content: center; }
+.ov-acts .btn.pri { order: -1; flex-basis: 100%; min-height: calc(var(--ovk) * 52); }
+.ov-acts .ov-hints, .ov-acts .sp { display: none; }
+/* chests: HD closed -> open */
+.ov-chest img.hd.ov-hdch { width: min(62vw, 260px); height: auto; filter: drop-shadow(0 0 24px color-mix(in srgb, var(--rc) 55%, transparent)); }
+.ov-chest img.hd.ov-hdch.open { animation: ovChPop .35s ease-out; }
+@keyframes ovChPop { 0% { transform: scale(.85); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.ov-sum-ic img.hd, .ov-chi img.hd, .ov-rwi img.hd { width: calc(var(--ovk) * 36); height: calc(var(--ovk) * 36); object-fit: contain; }
+.ov-sum { width: min(100%, 480px); max-height: 92vh; }
+.ov-sum-f { flex-wrap: wrap; } .ov-sum-f .btn { flex: 1 1 100%; justify-content: center; }
+.ov-days { flex-wrap: wrap; justify-content: center; }

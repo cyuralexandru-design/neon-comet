@@ -1,7 +1,7 @@
 {
   "name": "Neon Comet",
   "short_name": "Neon Comet",
-  "description": "Shooter spatial pixel art: piloteaza nava, invinge boss-i, deschide cufere, upgradeaza-ti flota. Merge offline.",
+  "description": "Shooter spatial vertical: piloteaza nava, invinge boss-i, deschide cufere, upgradeaza-ti flota. Merge offline.",
   "lang": "ro",
   "id": "./",
   "start_url": "./",
@@ -11,7 +11,7 @@
     "fullscreen",
     "standalone"
   ],
-  "orientation": "landscape",
+  "orientation": "portrait",
   "background_color": "#0b0e14",
   "theme_color": "#0b0e14",
   "categories": [

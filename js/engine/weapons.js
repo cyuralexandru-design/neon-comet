@@ -81,10 +81,12 @@
     const R = X.R, st = R.st, m = R.m;
     const wd = R.wdef, evoMul = 1 + 0.08 * (R.cards['evo_' + st.weapon.id] || 0) + (R.evolved ? 0.25 : 0);
     const over = (R.buffs.over > 0 ? 1.6 : 1) * (R.skRateT > 0 ? R.skRate || 1 : 1);
+    const od = m.overdrive && R.p && R.p.hp < (R.maxHp || 1) * ((m.fx.overdrive && m.fx.overdrive.below) || 0.35) ? 1 + m.overdrive : 1; // card overdrive
+    const oc = m.sp && m.sp.overcharge ? (m.sp.overcharge.dmg || 1.25) : 1;
     return {
-      shot: st.atk * m.dmg * wd.dmg * st.weapon.mult * evoMul,
-      atk: st.atk * m.dmg,
-      rate: wd.rate * st.rate * m.rate * over,
+      shot: st.atk * m.dmg * wd.dmg * st.weapon.mult * evoMul * od * oc,
+      atk: st.atk * m.dmg * od * oc,
+      rate: wd.rate * st.rate * m.rate * over * od,
       crit: Math.min(0.85, st.crit + m.crit), critMult: st.critMult || 2,
       guns: 1 + m.guns + (st.guns || 0),
       pierce: wd.pierce + m.pierce, bounce: m.bounce,
@@ -92,7 +94,9 @@
   };
   const roll = (base, E, extraCrit = 0) => { const c = Math.random() < E.crit + extraCrit; return { v: base * U.rnd(0.92, 1.08) * (c ? E.critMult : 1), c }; };
 
-  X.addBullet = (o) => { const b = Object.assign({ life: 1.6, hit: null, pierce: 0, bounce: 0, homing: 0, aoe: 0, crit: false, kind: 'laser', spr: 'proj_laser', frame: 0 }, o); if (b.pierce > 0 || b.bounce > 0) b.hit = new Set(); X.R.bullets.push(b); return b; };
+  X.addBullet = (o) => { const b = Object.assign({ life: 1.6, hit: null, pierce: 0, bounce: 0, homing: 0, aoe: 0, crit: false, kind: 'laser', spr: 'proj_laser', frame: 0 }, o);
+    const gi = X.R.m.giant; if (gi > 0 && !b.child && b.kind !== 'ally') { b.sc = 1 + gi; b.r = (b.r || 2) * (1 + gi); b.dmg *= 1 + gi * 0.5; if (b.aoe) b.aoe *= 1 + gi * 0.5; } // card giant
+    if (b.pierce > 0 || b.bounce > 0) b.hit = new Set(); X.R.bullets.push(b); return b; };
 
   // ------------------------------------------------------------ main weapon
   function fireMain(E) {
@@ -189,7 +193,7 @@
     sk.shots++; if (sk.shots >= sk.def.everyShots) { sk.shots = 0; sk.active = 0.3; return true; } return false;
   }
   function railShot(x, y, ang, E, evo) {
-    const R = X.R, len = 400, dx = Math.cos(ang), dy = Math.sin(ang);
+    const R = X.R, len = 640, dx = Math.cos(ang), dy = Math.sin(ang);
     const hits = [];
     for (const t of X.targets()) {
       const px = t.x - x, py = t.y - y, along = px * dx + py * dy;
@@ -328,7 +332,7 @@
     if (id === 'overcharge') { R.skfx.push({ type: 'beam', t: d.dur || 1, ml: d.dur || 1, w: d.width || 6, dps: base, tick: 0 }); U.sfx('shoot_rail'); F().doShake(1.5); }
     else if (id === 'firestorm') { R.skfx.push({ type: 'fring', x: p.x, y: p.y, r: 6, max: d.radius || 44, t: d.dur || 0.6, ml: d.dur || 0.6, dmg: base, burn: base * 0.25, hit: new Set() }); U.sfx('explode_m'); }
     else if (id === 'barrage') {
-      if (!X.nearest(p.x, p.y, 320)) return false;
+      if (!X.nearest(p.x, p.y, 420)) return false;
       const n = Math.round(d.count || 6);
       for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (i - (n - 1) / 2) * 0.32, r = roll(base, E); X.addBullet({ kind: 'missile', spr: 'proj_missile', x: p.x + (i - (n - 1) / 2) * 3, y: p.y - 4, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90, dmg: r.v, crit: r.c, homing: 6, accel: 280, maxSp: 240, aoe: 12, life: 2.6, target: null }); }
       U.sfx('shoot_missile'); F().ring(p.x, p.y, '#f77622', 16, 0.25);
@@ -364,7 +368,7 @@
       if (f.type === 'beam') { // Overcharge: thick piercing beam along the aim, follows the ship
         f.x = p.x; f.y = p.y - 10; f.ang = p.aimAng; f.tick -= dt;
         if (f.tick <= 0 && p.alive) { f.tick += 0.1; const dx = Math.cos(f.ang), dy = Math.sin(f.ang);
-          for (const t of X.targets()) { if (t.untargetable) continue; const px = t.x - f.x, py = t.y - f.y, al = px * dx + py * dy; if (al < 0 || al > 320) continue; if (Math.abs(px * dy - py * dx) < f.w / 2 + t.r) X.damage(t, f.dps * 0.1, false, t.x, t.y, { quiet: Math.random() < 0.6 }); } }
+          for (const t of X.targets()) { if (t.untargetable) continue; const px = t.x - f.x, py = t.y - f.y, al = px * dx + py * dy; if (al < 0 || al > 640) continue; if (Math.abs(px * dy - py * dx) < f.w / 2 + t.r) X.damage(t, f.dps * 0.1, false, t.x, t.y, { quiet: Math.random() < 0.6 }); } }
       } else if (f.type === 'fring') { // Firestorm: expanding ring of fire, hits each target once + burn
         f.x = p.x; f.y = p.y; f.r = U.lerp(f.max, 6, Math.max(0, f.t / f.ml));
         for (const t of X.targets()) { if (t.untargetable || f.hit.has(t)) continue; const dd = Math.hypot(t.x - f.x, t.y - f.y); if (dd < f.r + t.r) { f.hit.add(t); X.damage(t, f.dmg, false, t.x, t.y); if (t.kind === 'enemy') t.burn = { dps: Math.max((t.burn && t.burn.dps) || 0, f.burn), t: 2 }; } }
@@ -554,8 +558,9 @@
     const R = X.R;
     if (b.kind !== 'wave' && t.shieldBlocks && t.shieldBlocks(Math.atan2(b.vy, b.vx))) { X.blocked(t, b.x, b.y); b.dead = true; return; }
     if (b.hole) { b.hole = false; spawnHole(b.x, b.y); }
-    if (b.aoe) { aoe(b); b.dead = true; return; }
+    if (b.aoe) { aoe(b); if (X.cardHit) X.cardHit(b, t); b.dead = true; return; }
     X.damage(t, b.dmg, b.crit, b.x, b.y);
+    if (X.cardHit) X.cardHit(b, t);
     if (b.burn) t.burn = { dps: Math.max((t.burn && t.burn.dps) || 0, b.burn), t: 1.6 };
     if (b.kind !== 'flame' && b.kind !== 'wave') F().anim('fx_hit', b.x, b.y);
     if (b.prism && !b.child) { // laser evolution: splits in two
@@ -589,5 +594,124 @@
     const R = X.R; if (R.evolved) return; R.evolved = true;
     U.ui('alert', 'evolved', { weapon: R.wdef.evo, base: R.st.weapon.id, nameKey: 'wpn.' + R.wdef.evo + '.name' });
     U.sfx('legendary'); F().ring(R.p.x, R.p.y, '#fee761', 60, 0.6); F().doFlash('#fee761', 0.3);
+  };
+
+  // ================================================================ 4.0 CARDS (SPEC-40 §4)
+  // Numbers come from the card def: c.fx = {k: v} (data agent, NOTES/40-data.md) or c.val, else the fallbacks here.
+  // Values are PER LEVEL (stacking) unless noted. Special cards (c.special, ids 'sp_<x>' or plain) are 1-level.
+  const CF = {
+    explosive: { chance: 0.12, radius: 16, dmg: 0.6 }, burn: { dps: 0.25, dur: 2 }, freeze: { chance: 0.08, dur: 1.2, slow: 0.5 },
+    poison: { dps: 0.15, dur: 3, stacks: 5 }, chain: { chance: 0.18, jumps: 2, dmg: 0.5 }, split: { chance: 0.3, n: 2, dmg: 0.4 }, giant: { val: 0.2 },
+    armor: { val: 0.06 }, shieldregen: { val: 0.3, delay: 0.85 }, dodge: { val: 0.05 }, dashcd: { val: 0.12 }, thorns: { val: 1.5, radius: 36 },
+    crystalbonus: { val: 0.15 }, xpboost: { val: 0.15 }, secondwind: { heal: 0.4 }, dronehelper: { dmg: 0.6, every: 0.6 }, overdrive: { val: 0.2, below: 0.35 },
+    // specials
+    chain_sp: { every: 3, targets: 5, jumps: 4, dmg: 2 }, blackhole: { every: 12, dur: 3, radius: 38, dps: 3 }, shieldnova: { dmg: 8, radius: 80, cd: 8 },
+    phoenix: { heal: 1, dmg: 20 }, timewarp: { every: 20, dur: 4 }, overcharge: { every: 15, dur: 5, dmg: 1.25 }, vampfield: { radius: 46, dps: 1.2, heal: 0.02 },
+    frost: { every: 8, dur: 1.5, dmg: 3 },
+  };
+  const SPECIALS = ['chain', 'blackhole', 'shieldnova', 'phoenix', 'timewarp', 'overcharge', 'vampfield', 'frost'];
+  const keyOf = (c) => { const id = String(c.id).replace(/^(sp_|special_|card_sp_)/, ''); return c.special || /^sp_/.test(c.id) ? (id === 'chain' ? 'chain_sp' : id) : id; };
+  const fxv = (c, key, k) => { const f = c.fx && typeof c.fx === 'object' ? c.fx : null; if (f && typeof f[k] === 'number') return f[k]; if (k === 'val' && typeof c.val === 'number') return c.val; if (k === 'chance' && !f && typeof c.val === 'number' && c.val < 1) return c.val; return (CF[key] || {})[k]; };
+  X.SPECIAL_OK = X.SPECIAL_OK || {};
+  for (const id of SPECIALS) { X.SPECIAL_OK[id] = true; X.SPECIAL_OK['sp_' + id] = true; }
+  for (const id of Object.keys(CF)) X.SPECIAL_OK[id] = true;
+  X.applyCard = (c, lvl) => {
+    const R = X.R, m = R.m, key = keyOf(c), v = (k) => fxv(c, key, k); m.fx[key] = Object.assign({}, CF[key], c.fx && typeof c.fx === 'object' ? c.fx : {});
+    switch (key) {
+      case 'explosive': m.explode += v('chance'); break;
+      case 'burn': m.burn += v('dps'); break;
+      case 'freeze': m.freeze += v('chance'); break;
+      case 'poison': m.poison += v('dps'); break;
+      case 'chain': m.chain += 1; break;
+      case 'split': m.split += 1; break;
+      case 'giant': m.giant += v('val'); break;
+      case 'armor': m.armor += v('val'); break;
+      case 'shieldregen': m.shdRegen += v('val'); m.shdDelay *= v('delay') || 0.85; break;
+      case 'dodge': m.dodge += v('val'); break;
+      case 'dashcd': m.dashCd *= 1 - v('val'); break;
+      case 'thorns': m.thorns += v('val'); break;
+      case 'crystalbonus': m.crBonus += v('val'); break;
+      case 'xpboost': m.xpB += v('val'); break;
+      case 'secondwind': m.secondWind += 1; break;
+      case 'dronehelper': m.drones += 1; R.helpers.push({ a: R.helpers.length * 2.1, x: R.p.x, y: R.p.y, t: U.rnd(0, 0.5) }); break;
+      case 'overdrive': m.overdrive += v('val'); break;
+      default: if (CF[key]) { m.sp[key] = Object.assign({}, CF[key], c.fx && typeof c.fx === 'object' ? c.fx : {}); R.cardT[key] = key === 'blackhole' || key === 'timewarp' ? 4 : 1; if (key === 'phoenix') m.sp.phoenix.ready = true; }
+    }
+    void lvl;
+  };
+  // on bullet hit (main weapon / card missiles), t may be enemy | boss | orb | rock
+  X.cardHit = (b, t) => {
+    const R = X.R, m = R.m; if (!m || b.cardFx) return;
+    const E = X.eff(), live = !t.dead, isFoe = t.kind === 'enemy' || t.kind === 'boss' || t.kind === 'mboss';
+    if (m.explode && Math.random() < Math.min(0.6, m.explode)) { const f = m.fx.explosive || CF.explosive, r = f.radius || 16;
+      F().ring(b.x, b.y, '#f0a850', r, 0.25); F().explode(b.x, b.y, 10, '#f0a850');
+      for (const o of X.targets()) if (o !== t && !o.untargetable && U.d2(o.x, o.y, b.x, b.y) < (r + o.r) ** 2) X.damage(o, b.dmg * (f.dmg || 0.6), false, o.x, o.y, { quiet: true }); }
+    if (live && isFoe) {
+      if (m.burn) t.burn = { dps: Math.max((t.burn && t.burn.dps) || 0, E.atk * m.burn), t: (m.fx.burn && m.fx.burn.dur) || 2 };
+      if (m.poison) { const f = m.fx.poison || CF.poison, P0 = t.poison || { dps: 0, n: 0 }; P0.n = Math.min(f.stacks || 5, P0.n + 1); P0.dps = E.atk * m.poison * P0.n; P0.t = f.dur || 3; t.poison = P0; }
+      if (m.freeze && t.kind === 'enemy' && Math.random() < Math.min(0.5, m.freeze)) { const f = m.fx.freeze || CF.freeze; t.slowT = f.dur || 1.2; t.slowK = f.slow || 0.5; }
+    }
+    if (m.chain && Math.random() < Math.min(0.6, (m.fx.chain && m.fx.chain.chance) || CF.chain.chance)) { const f = m.fx.chain || CF.chain; chain(b.x, b.y, t, b.dmg * (f.dmg || 0.5), (f.jumps || 2) + m.chain - 1, '#8fd3ff', new Set([t])); }
+    if (m.split && !b.child && (b.kind === 'laser' || b.kind === 'plasma' || b.kind === 'blaster' || b.kind === 'pellet') && Math.random() < Math.min(0.8, ((m.fx.split && m.fx.split.chance) || CF.split.chance) * m.split)) {
+      const f = m.fx.split || CF.split, a0 = Math.atan2(b.vy, b.vx), sp = Math.hypot(b.vx, b.vy) * 0.8 || 200;
+      for (let i = 0; i < (f.n || 2); i++) { const a = a0 + (i - ((f.n || 2) - 1) / 2) * 0.7; const c = X.addBullet({ kind: b.kind === 'pellet' ? 'pellet' : 'laser', spr: b.spr, col: b.col, x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, dmg: b.dmg * (f.dmg || 0.4), life: 0.45, child: true, cardFx: true }); c.hit = new Set([t]); }
+    }
+  };
+  // damage over time + freeze slow for enemies/bosses (called from enemies.js / bosses.js)
+  X.tickDots = (e, dt) => {
+    if (e.slowT > 0) e.slowT -= dt;
+    const P0 = e.poison; if (!P0) return;
+    P0.t -= dt; P0.tick = (P0.tick || 0) - dt;
+    if (P0.tick <= 0) { P0.tick = 0.33; X.damage(e, P0.dps * 0.33, false, e.x, e.y, { quiet: true }); if (!F().headless && Math.random() < 0.5) F().spark(e.x + U.rnd(-4, 4), e.y, '#8bc34a', 0, -12, 0.35); }
+    if (P0.t <= 0) e.poison = null;
+  };
+  X.cardThorns = (dmg) => {
+    const R = X.R, p = R.p, f = R.m.fx.thorns || CF.thorns, r = f.radius || 36, d = X.eff().atk * R.m.thorns; void dmg;
+    F().ring(p.x, p.y, '#c0645c', r, 0.25);
+    for (const o of X.targets()) if (!o.untargetable && U.d2(o.x, o.y, p.x, p.y) < (r + o.r) ** 2) X.damage(o, d, false, o.x, o.y, { quiet: true });
+  };
+  X.cardShieldBreak = () => {
+    const R = X.R, f = R.m.sp.shieldnova; if (!f || (R.cardT.shieldnova || 0) > 0) return;
+    R.cardT.shieldnova = f.cd || 8; const p = R.p, r = f.radius || 80, d = X.eff().atk * (f.dmg || 8);
+    F().ring(p.x, p.y, '#73b9c6', r, 0.5); F().doFlash('#73b9c6', 0.2); U.sfx('shield_up');
+    for (const o of X.targets()) if (!o.untargetable && U.d2(o.x, o.y, p.x, p.y) < (r + o.r) ** 2) X.damage(o, d, false, o.x, o.y);
+    R.ebullets = R.ebullets.filter(b => U.d2(b.x, b.y, p.x, p.y) > r * r);
+  };
+  // death intercept: second wind (per level, heal 40%) then phoenix (full heal + blast). true = death cancelled
+  X.cardCheat = () => {
+    const R = X.R, p = R.p, m = R.m; if (!m) return false;
+    let heal = 0, blast = 0;
+    if (m.secondWind > 0) { m.secondWind--; heal = (m.fx.secondwind && m.fx.secondwind.heal) || CF.secondwind.heal; }
+    else if (m.sp.phoenix && m.sp.phoenix.ready) { m.sp.phoenix.ready = false; heal = m.sp.phoenix.heal || 1; blast = m.sp.phoenix.dmg || 20; }
+    else return false;
+    p.hp = Math.max(1, R.maxHp * heal); p.inv = 2.5; R.ebullets.length = 0;
+    F().ring(p.x, p.y, blast ? '#f0a850' : '#78a86c', blast ? 140 : 70, 0.7); F().doFlash(blast ? '#f0a850' : '#78a86c', 0.35); U.sfx('revive');
+    if (blast) { const d = X.eff().atk * blast; for (const o of X.targets()) if (!o.untargetable) X.damage(o, d, true, o.x, o.y, { quiet: true }); }
+    X.alert && X.alert('rebirth', { card: blast ? 'phoenix' : 'secondwind' });
+    return true;
+  };
+  X.cardsStep = (dt) => {
+    const R = X.R, p = R.p, m = R.m; if (!p.alive || !m) return;
+    const E = X.eff(), T = R.cardT, sp = m.sp;
+    for (const k of Object.keys(T)) T[k] -= dt;
+    if (!R.story && R.slow > 0) R.slow -= dt; // timewarp in survival (story engine ticks it itself)
+    // helper drones: orbit behind the ship, shoot the nearest target
+    for (let i = 0; i < R.helpers.length; i++) { const h = R.helpers[i], f = m.fx.dronehelper || CF.dronehelper; h.a += dt * 1.6;
+      const tx = p.x + Math.cos(h.a + i * 2.1) * 20, ty = p.y + 6 + Math.sin(h.a + i * 2.1) * 8; h.x += (tx - h.x) * Math.min(1, dt * 6); h.y += (ty - h.y) * Math.min(1, dt * 6);
+      h.t -= dt; if (h.t <= 0) { const t = X.nearest(h.x, h.y, 240); if (t) { h.t = f.every || 0.6; const a = Math.atan2(t.y - h.y, t.x - h.x), d = roll(E.atk * (f.dmg || 0.6), E);
+        X.addBullet({ kind: 'laser', spr: 'proj_laser', x: h.x, y: h.y, vx: Math.cos(a) * 320, vy: Math.sin(a) * 320, dmg: d.v, crit: d.c, life: 1.2, child: true, cardFx: true }); } else h.t = 0.2; } }
+    if (sp.chain_sp && T.chain_sp <= 0) { const f = sp.chain_sp; T.chain_sp = f.every || 3; const used = new Set();
+      for (let i = 0; i < (f.targets || 5); i++) { const t = X.nearest(p.x, p.y - 60, 400, used); if (!t) break; used.add(t); F().bolt(t.x, 0, t.x, t.y, '#c8e8ff', 0.18); X.damage(t, E.atk * (f.dmg || 2), false, t.x, t.y); chain(t.x, t.y, t, E.atk * (f.dmg || 2) * 0.6, f.jumps || 4, '#8fd3ff', new Set([t])); }
+      if (used.size) U.sfx('hit'); }
+    if (sp.blackhole && T.blackhole <= 0) { const f = sp.blackhole, t = X.nearest(p.x, p.y - 80, 400); T.blackhole = t ? f.every || 12 : 1;
+      if (t) { R.skfx.push({ type: 'hole', x: t.x, y: t.y, r: f.radius || 38, t: f.dur || 3, ml: f.dur || 3, dps: E.atk * (f.dps || 3) }); U.sfx('shoot_plasma'); } }
+    if (sp.timewarp && T.timewarp <= 0) { const f = sp.timewarp; T.timewarp = f.every || 20; R.slow = Math.max(R.slow || 0, f.dur || 4); F().ring(p.x, p.y, '#8fd3ff', 220, 0.8); F().doFlash('#8fd3ff', 0.2); U.sfx('beam_charge'); }
+    if (sp.overcharge && T.overcharge <= 0) { const f = sp.overcharge; T.overcharge = f.every || 15; R.buffs.over = Math.max(R.buffs.over, f.dur || 5); F().ring(p.x, p.y, '#e0574f', 40, 0.4); }
+    if (sp.frost && T.frost <= 0) { const f = sp.frost; T.frost = f.every || 8; F().ring(p.x, p.y, '#bfe6ff', 240, 0.7); F().doFlash('#bfe6ff', 0.15);
+      for (const e of R.enemies) if (!e.dead && e.leaving == null && !e.ally) { e.stun = Math.max(e.stun || 0, f.dur || 1.5); e.slowT = (f.dur || 1.5) + 1; e.slowK = 0.5; X.damage(e, E.atk * (f.dmg || 3), false, e.x, e.y, { quiet: true }); }
+      for (const b of [R.boss, R.mboss]) if (b && !b.untargetable) { b.stun = Math.max(b.stun || 0, (f.dur || 1.5) * 0.4); X.damage(b, E.atk * (f.dmg || 3), false, b.x, b.y, { quiet: true }); } }
+    if (sp.vampfield) { const f = sp.vampfield, r = f.radius || 46; R.vfT = (R.vfT || 0) - dt;
+      if (R.vfT <= 0) { R.vfT = 0.25; let n = 0; for (const o of X.targets()) if (!o.untargetable && o.kind !== 'orb' && U.d2(o.x, o.y, p.x, p.y) < (r + o.r) ** 2) { X.damage(o, E.atk * (f.dps || 1.2) * 0.25, false, o.x, o.y, { quiet: true }); n++; }
+        if (n) p.hp = Math.min(R.maxHp, p.hp + R.maxHp * Math.min(f.heal || 0.02, 0.004 * n) * 0.25); } }
   };
 })(window.NC = window.NC || {});

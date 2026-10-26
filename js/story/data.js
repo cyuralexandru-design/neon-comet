@@ -71,9 +71,14 @@
          reward: { cr: 600, xp: 220, item: { r: 2, chance: 0.8 } }, first: { cr: 900, xp: 160, item: { r: 3 }, fragment: 1 } }),
   ];
 
+  // 4.0 ores on every level: ore_crew = xp/8, oreAny (random hangar ores) = cr/25; first clear x2 (added on top)
+  for (const l of ch1) {
+    l.reward.ores = { ore_crew: Math.round(l.reward.xp / 8) }; l.reward.oreAny = Math.round(l.reward.cr / 25);
+    l.first.ores = { ore_crew: Math.round(l.reward.xp / 8) * 2 }; l.first.oreAny = Math.round(l.reward.cr / 25) * 2;
+  }
   const chapters = [
     { id: 1, world: 'wreck', nameKey: 'story.ch.1', descKey: 'story.ch.1.d', locked: false, levels: ch1,
-      chests: { 10: { cr: 400, items: [{ r: 1 }], gearChest: 1 }, 20: { cr: 800, items: [{ r: 2 }], gearChest: 2 }, 30: { cr: 1500, items: [{ r: 3 }, { r: 2 }], gearChest: 3 } } },
+      chests: { 10: { cr: 400, items: [{ r: 1 }], gearChest: 1, ores: { ore_crew: 30 }, oreAny: 30 }, 20: { cr: 800, items: [{ r: 2 }], gearChest: 2, ores: { ore_crew: 60 }, oreAny: 60 }, 30: { cr: 1500, items: [{ r: 3 }, { r: 2 }], gearChest: 3, ores: { ore_crew: 120 }, oreAny: 120 } } },
   ];
   [['crystal', 2], ['gas', 3], ['jungle', 4], ['hive', 5], ['machine', 6], ['edge', 7]].forEach(([wd, i]) =>
     chapters.push({ id: i, world: wd, nameKey: 'story.ch.' + i, descKey: 'story.ch.' + i + '.d', locked: true, levels: [], chests: {} }));
@@ -110,6 +115,8 @@
   const itemMaxLvl = r => 5 * (r + 1);
   const itemCost = (r, lvl) => Math.round(120 * RMULT[r] * Math.pow(1.25, lvl - 1));
   const itemSell = (r, lvl) => Math.round(60 * RMULT[r] * (1 + 0.3 * (lvl - 1)));
+  const itemSellOre = r => 5 * (r + 1);                               // 4.0: selling a crew item also gives ore_crew
+  const crewItemMult = L => 1 + 0.012 * (Math.max(1, L) - 1);        // 4.0: crew category level 1..150 (x2.79 at 150; old lvl 25 = x2.2)
   const I = (id, slot, fx, ship) => ({ id, slot, nameKey: 'story.item.' + id, descKey: 'story.item.' + id + '.d', icon: id, fx, ship: ship || {} });
   const items = [
     I('ci_scrapblade', 'cw', { pow: 0.06 }, { dmg: 0.010 }),
@@ -147,7 +154,7 @@
   const clues = {};
   for (let i = 1; i <= 6; i++) clues['c' + i] = { id: 'c' + i, titleKey: 'story.clue.c' + i + '.t', textKey: 'story.clue.c' + i, icon: 'ui_clue' };
 
-  NC.STORY = { chapters, crew, crewOrder: CREW_ORDER, crewScale: CREW_SCALE, items, itemById, slots: SLOTS, rmult: RMULT, itemMaxLvl, itemCost, itemSell, dialogs, clues,
+  NC.STORY = { chapters, crew, crewOrder: CREW_ORDER, crewScale: CREW_SCALE, items, itemById, slots: SLOTS, rmult: RMULT, itemMaxLvl, itemCost, itemSell, itemSellOre, crewItemMult, dialogs, clues,
     starRules: { two: 0.5, three: 0.8 }, chestStars: [10, 20, 30],
     level(id) { for (const c of chapters) for (const l of c.levels) if (l.id === id) return l; return null; },
     chapterOf(id) { const n = +String(id).split('-')[0]; return chapters.find(c => c.id === n) || null; } };

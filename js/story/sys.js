@@ -31,7 +31,7 @@
     s.items = s.items.filter(it => it && D.itemById[it.id]);
     const seen = {};
     for (const it of s.items) {
-      it.r = clampI(it.r, 0, 4); it.lvl = clampI(it.lvl || 1, 1, D.itemMaxLvl(it.r));
+      it.r = clampI(it.r, 0, 4); it.lvl = clampI(it.lvl || 1, 1, 150);
       if (typeof it.uid !== 'string' || seen[it.uid]) { s.uid++; it.uid = 'u' + s.uid.toString(36); }
       seen[it.uid] = 1;
     }
@@ -115,13 +115,17 @@
   api.addCrewXp = (id, n) => { const s = S(); if (s && s.crew[id] && n > 0) { s.crew[id].xp += Math.floor(n); return true; } return false; };
 
   // ---------------- crew items ----------------
-  const effMul = it => ST().rmult[it.r] * (1 + 0.05 * (it.lvl - 1));
+  // 4.0: crew items level by the CREW category (NC.sys.catLevel('crew'), 1..150, upgraded with ore_crew). it.lvl is a mirror.
+  const crewL = () => (NC.sys && NC.sys.catLevel ? NC.sys.catLevel('crew') : 1);
+  const effMul = it => ST().rmult[it.r] * ST().crewItemMult(crewL());
   api.items = () => S().items.map(it => Object.assign({}, it, { def: ST().itemById[it.id], holder: api.holder(it.uid) }));
   api.item = uid => S().items.find(i => i.uid === uid) || null;
   api.itemInfo = it => {  // derived numbers for UI: {pow,cd,dur (fractions), ship:{stat:frac}, maxLvl, upCost, sell}
     const d = ST().itemById[it.id], m = effMul(it), ship = {};
     for (const k of Object.keys(d.ship)) ship[k] = d.ship[k] * m;
-    return { pow: (d.fx.pow || 0) * m, cd: (d.fx.cd || 0) * m, dur: (d.fx.dur || 0) * m, ship, maxLvl: ST().itemMaxLvl(it.r), upCost: it.lvl >= ST().itemMaxLvl(it.r) ? null : ST().itemCost(it.r, it.lvl), sell: ST().itemSell(it.r, it.lvl) };
+    const L = crewL(), c = NC.DATA && NC.DATA.catCost ? NC.DATA.catCost(L) : null;
+    return { pow: (d.fx.pow || 0) * m, cd: (d.fx.cd || 0) * m, dur: (d.fx.dur || 0) * m, ship, lvl: L, maxLvl: 150, tier: NC.DATA ? NC.DATA.tierFromLevel(L) : 0,
+      upCost: c ? c.cr : null, upOre: c ? c.ore : null, sell: ST().itemSell(it.r, 1), sellOre: ST().itemSellOre(it.r) };
   };
   api.holder = uid => { const s = S(); for (const id of ST().crewOrder) for (const sl of ST().slots) if (s.crew[id].items[sl] === uid) return id; return null; };
   // addItem(r, slot?, defId?) -> new item
@@ -144,14 +148,13 @@
   };
   api.upgradeItem = uid => {
     const s = S(), it = api.item(uid); if (!it) return fail('story.err.invalid');
-    const inf = api.itemInfo(it); if (inf.upCost == null) return fail('story.err.maxLevel');
-    const r = root(); if (r.crystals < inf.upCost) return fail('sys.err.noCrystals');
-    r.crystals -= inf.upCost; it.lvl++; persist(); return ok({ lvl: it.lvl, cost: inf.upCost });
+    const res = NC.sys.upgradeCat('crew'); if (!res.ok) return res.err === 'sys.err.maxLevel' ? fail('story.err.maxLevel') : res;
+    for (const x of s.items) x.lvl = res.lvl; persist(); return ok({ lvl: res.lvl, cost: res.cost });   // 4.0: levels ALL crew items
   };
   api.sellItem = uid => {
     const s = S(), it = api.item(uid); if (!it) return fail('story.err.invalid');
     if (api.holder(uid)) return fail('story.err.equipped');
-    const v = api.itemInfo(it).sell; s.items = s.items.filter(i => i !== it); root().crystals += v; persist(); return ok({ cr: v });
+    const inf = api.itemInfo(it), v = inf.sell; s.items = s.items.filter(i => i !== it); root().crystals += v; if (NC.sys.addOre) NC.sys.addOre('ore_crew', inf.sellOre); persist(); return ok({ cr: v, ores: { ore_crew: inf.sellOre } });
   };
   // merge 3 items, same slot AND same rarity -> 1 random item of that slot, next rarity; level = max of three (capped)
   api.mergeItems = uids => {
@@ -214,6 +217,10 @@
   function grant(rw, out) {
     const r = root(); out = out || { cr: 0, items: [] };
     if (rw.cr) { r.crystals += rw.cr; if (r.stats) r.stats.crEarned = (r.stats.crEarned || 0) + rw.cr; out.cr += rw.cr; }
+    // 4.0 ores: rw.ores {ore_x:n} exact + rw.oreAny n split over random hangar categories
+    out.ores = out.ores || {};
+    const o = Object.assign({}, rw.ores || {}); if (rw.oreAny && NC.sys.rollOres) { const x = NC.sys.rollOres(rw.oreAny); for (const k of Object.keys(x)) o[k] = (o[k] || 0) + x[k]; }
+    for (const k of Object.keys(o)) { if (NC.sys.addOre) NC.sys.addOre(k, o[k]); out.ores[k] = (out.ores[k] || 0) + o[k]; }
     for (const it of (rw.items || [])) out.items.push(api.addItem(it.r, it.slot, it.id));
     if (rw.gearChest != null && Array.isArray(r.chests)) { r.chests[rw.gearChest] = (r.chests[rw.gearChest] || 0) + 1; out.gearChest = rw.gearChest; }
     return out;
@@ -242,10 +249,12 @@
     if (num(res.time, 0) > 0 && (!p.best || res.time < p.best)) p.best = Math.round(res.time * 10) / 10;
     const rw = { cr: 0, items: [] }, ric = l.reward.item;
     let xp = l.reward.xp;
-    const bundle = { cr: l.reward.cr, items: [] };
+    const bundle = { cr: l.reward.cr, items: [], ores: Object.assign({}, l.reward.ores || {}), oreAny: l.reward.oreAny || 0 };
     if (ric && rnd() < (ric.chance == null ? 1 : ric.chance)) bundle.items.push({ r: ric.r, slot: ric.slot, id: ric.id });
     if (first && l.first) {
       bundle.cr += l.first.cr || 0; xp += l.first.xp || 0;
+      for (const k of Object.keys(l.first.ores || {})) bundle.ores[k] = (bundle.ores[k] || 0) + l.first.ores[k];
+      bundle.oreAny += l.first.oreAny || 0;
       if (l.first.item) bundle.items.push({ r: l.first.item.r, slot: l.first.item.slot, id: l.first.item.id });
       if (l.first.fragment) { s.fragments = Math.max(s.fragments, l.first.fragment); rw.fragment = l.first.fragment; }
     }

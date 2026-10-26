@@ -13,6 +13,10 @@
   const num = n => (UI.num ? UI.num(n) : String(Math.floor(n || 0)));
   const fmt = n => (UI.fmt ? UI.fmt(n) : String(Math.floor(n || 0)));
   const img = (id, cls) => (UI.img ? UI.img(id, cls || '') : '');
+  // 4.0 HD art: UI.hd(id) -> url|null (core); fall back to the old sprite
+  const hdu = id => { try { return (UI.hd && UI.hd(id)) || null; } catch (e) { return null; } };
+  const hdi = (id, cls, fb) => { const u = hdu(id); return u ? `<img class="hd ${cls || ''}" src="${esc(u)}" alt="" draggable="false">` : (fb === false ? '' : img(fb || id, (cls || '') + ' pix')); };
+  UI.hdImg = UI.hdImg || hdi;
   const crIco = () => img('ui_crystal', 'ov-cri pix');
   const crystals = () => (UI.crystals ? UI.crystals() : 0);
   const sfx = (n, p) => { try { UI.sfx && UI.sfx(n, p); } catch (e) {} };
@@ -81,7 +85,7 @@
     if (!rew) return '';
     const out = [];
     if (rew.cr) out.push(`<span class="ov-rwi cr">${crIco()}<b>${fmt(rew.cr)}</b></span>`);
-    if (rew.chest != null) out.push(`<span class="ov-rwi" style="--rc:var(--r${clampR(rew.chest)})">${img('chest_' + clampR(rew.chest), 'pix')}</span>`);
+    if (rew.chest != null) out.push(`<span class="ov-rwi" style="--rc:var(--r${clampR(rew.chest)})">${hdi('chest_' + clampR(rew.chest), '')}</span>`);
     if (rew.cons) for (const k of Object.keys(rew.cons)) out.push(`<span class="ov-rwi">${img('cons_' + k, 'pix')}<b>x${rew.cons[k]}</b></span>`);
     return `<span class="ov-rw">${out.join('')}</span>`;
   };
@@ -94,7 +98,7 @@
   L.minMs = 5000;
   L.run = () => new Promise(resolve => {
     const box = document.createElement('div'); box.id = 'loader'; box.className = 'ov-loader';
-    box.innerHTML = '<canvas class="pix"></canvas><div class="ov-ld-txt" hidden><span class="l"></span><span class="p"></span></div>';
+    box.innerHTML = '<canvas class="pix"></canvas><img class="ov-ld-logo" alt="" hidden><div class="ov-ld-txt" hidden><span class="l"></span><span class="p"></span></div>';
     ($('stage') || document.body).appendChild(box);
     const cv = box.querySelector('canvas'), g = cv.getContext('2d');
     const txt = box.querySelector('.ov-ld-txt'), tl = txt.querySelector('.l'), tp = txt.querySelector('.p');
@@ -107,7 +111,7 @@
     readPal();
     let W = 320, H = 180, K = 1, DPR = 1, lastPos = '';
     const size = () => {
-      DPR = window.devicePixelRatio || 1; K = Math.max(1, Math.floor(innerHeight * DPR / 180));
+      DPR = window.devicePixelRatio || 1; K = Math.max(1, Math.floor(Math.min(innerWidth, innerHeight * 0.5625, 480) * DPR / 200));
       W = Math.ceil(innerWidth * DPR / K); H = Math.ceil(innerHeight * DPR / K);
       cv.width = W; cv.height = H; cv.style.width = (W * K / DPR) + 'px'; cv.style.height = (H * K / DPR) + 'px';
       g.imageSmoothingEnabled = false; lastPos = '';
@@ -117,6 +121,9 @@
     const base = (NC.assets && NC.assets.base) || 'assets/sprites/';
     const ld = src => { const i = new Image(); i.ok = false; i.onload = () => { i.ok = true; }; i.src = base + src; return i; };
     const ship = ld('ship_' + shipId + '.png'), logo = ld('ui_logo.png'), thr = ld('fx_thruster.png');
+    const hdLogo = box.querySelector('.ov-ld-logo'); let hdOk = false;
+    const tryHd = () => { const u = hdu('logo'); if (u && !hdLogo.src) { hdLogo.onload = () => { hdOk = true; hdLogo.hidden = false; }; hdLogo.src = u; } };
+    tryHd();
     const stars = []; let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 140; i++) stars.push({ x: rnd(), y: rnd(), l: i % 3 });
     const ease = x => (x <= 0 ? 0 : x >= 1 ? 1 : (1 - Math.cos(Math.PI * x)) / 2);
@@ -137,8 +144,9 @@
         g.fillStyle = C.star[s.l]; g.fillRect(Math.round(s.x * W), Math.round(s.y * H), 1, 1);
       }
       const cx = Math.round(W / 2);
-      const ls = Math.max(1, Math.floor(W * 0.58 / 200)), lw = 200 * ls, lh = 48 * ls, ly = Math.round(H * 0.42 - lh / 2 - 8);
-      if (logo.ok) g.drawImage(logo, Math.round(cx - lw / 2), ly, lw, lh);
+      const ls = Math.max(1, Math.floor(W * 0.8 / 200)), lw = 200 * ls, lh = 48 * ls, ly = Math.round(H * 0.5 - lh / 2 - 8);
+      if (hdOk) { /* DOM HD logo above the bar */ }
+      else if (logo.ok) g.drawImage(logo, Math.round(cx - lw / 2), ly, lw, lh);
       else { g.textBaseline = 'top'; g.textAlign = 'center'; g.font = '700 16px NCPixel, monospace'; g.fillStyle = C.line; g.fillText('NEON COMET', cx + 1, ly + 17); g.fillStyle = C.ink; g.fillText('NEON COMET', cx, ly + 16); }
       // bar: 1px line border, dark track, amber comet trail
       const bw = Math.min(Math.round(lw * 0.9), W - 48), bx = Math.round(cx - bw / 2), by = ly + lh + 24;
@@ -185,7 +193,7 @@
     Promise.all([load.catch(e => console.error('assets.load', e)), fonts]).then(() => {
       try { if (NC.game && NC.game.init) NC.game.init($('c')); } catch (e) { console.error('game.init', e); }
       try { UI.layout && UI.layout(); } catch (e) {}
-      readPal(); loaded = true;
+      readPal(); tryHd(); loaded = true;
     });
     requestAnimationFrame(draw);
   });
@@ -236,7 +244,7 @@
     const vars = v != null ? { v: Math.abs(v) < 1 ? Math.round(v * 100) : v, n: next } : { n: next };
     return { id, r, evo, special: !!(c.special || def.special), max: c.max || def.max || 0, cur, next,
       name: t(c.nameKey || def.nameKey || 'card.' + id + '.name'), desc: t(c.descKey || def.descKey || 'card.' + id + '.desc', vars),
-      sprite: c.sprite || def.sprite || 'card_' + id };
+      sprite: c.sprite || def.sprite || 'card_' + id, hdArt: (c.special || def.special) && hdu('card_sp_' + id) ? 'card_sp_' + id : 'card_' + id };
   };
   const lvTxt = (n, max) => t('ov.lv', { n }) + (max && max < 90 ? '/' + max : '');
   const cardInfoPopup = c => {
@@ -258,7 +266,7 @@
     else UI.setSetting(k, m[k] > 0.001 ? m[k] : VOLDEF[k]);
   };
   const skillIcon = c => `<button class="ov-sk${c.special ? ' sp' : ''}${c.evo ? ' evo' : ''}" style="--rc:var(--r${c.r})" data-f data-a="skill" data-id="${esc(c.id)}" data-k="sk-${esc(c.id)}" title="${esc(c.name)}">
-      <span class="im">${img(c.sprite, 'pix')}</span><span class="lv">${c.max && c.cur >= c.max ? esc(t('ov.max')) : esc(t('ov.lv', { n: c.cur }))}</span></button>`;
+      <span class="im">${hdi(c.hdArt, '', c.sprite)}</span><span class="lv">${c.max && c.cur >= c.max ? esc(t('ov.max')) : esc(t('ov.lv', { n: c.cur }))}</span></button>`;
 
   UI.screens.pause = {
     cls: 'ov ov-veil ov-pause',
@@ -318,7 +326,7 @@
     return `<div class="ov-cw${c.special ? ' sp' : ''}${c.evo ? ' evo' : ''}" style="--rc:var(--r${c.r});animation-delay:${i * 70}ms" data-f ${i === Math.floor((n - 1) / 2) ? 'data-first' : ''} data-a="pick" data-id="${esc(c.id)}">
       <div class="ov-card"><div class="ov-cin">
         <div class="ov-ctop"><span class="rn">${esc(t('rarity.' + c.r))}</span>${tag ? `<span class="tg">${esc(t(tag))}</span>` : ''}</div>
-        <div class="ov-art">${img(c.sprite, 'pix')}</div>
+        <div class="ov-art">${hdi(c.hdArt, '', c.sprite)}${hdu('cardframe_r' + c.r) ? `<img class="hd ov-cfr" src="${esc(hdu('cardframe_r' + c.r))}" alt="">` : ''}</div>
         <div class="ov-cnm${c.name.length > 13 ? ' long' : ''}">${esc(c.name)}</div>
         <div class="ov-cds">${esc(c.desc)}</div>
         <div class="ov-clv"><span class="k">${esc(t('ov.cards.lvl'))}</span><span class="v">${c.cur > 0 ? `<span class="cur">${c.cur}</span>${ico('arrow')}` : ''}<b>${c.next}</b>${c.max && c.max < 90 ? `<small>/${c.max}</small>` : ''}</span></div>
@@ -396,7 +404,7 @@
       el.innerHTML = `<div class="ov-head"><h2 class="ov-title">${esc(t('ov.over.title'))}</h2><span class="sp"></span><span class="ov-pill ov-cut">${crIco()}<b>${fmt(crystals())}</b></span></div>
         <div class="ov-ov">
           <div class="ov-pnl ov-cut ov-ov-l" style="--rc:var(--r${clampR(UI.shipRarity(s.shipId))})">
-            <div class="ov-shipbox"><span class="ring"></span>${img('ship_' + (s.shipId || 'vanator'), 'ov-ship pix')}</div>
+            <div class="ov-shipbox"><span class="ring"></span>${hdi('ship_' + (s.shipId || 'vanator'), 'ov-ship')}</div>
             <div class="ov-score"><span class="k">${esc(t('ov.over.score'))}</span><b>${num(s.score)}</b>
               ${s.isBest ? `<span class="ov-best">${ico('lvl')}${esc(t('ov.over.newBest'))}</span>` : `<span class="ov-rec">${esc(t('ov.over.best'))} <b>${num(s.best)}</b></span>`}</div>
             <div class="ov-earn"><span class="k">${esc(t('ov.over.earned'))}</span><span class="v">${crIco()}<b>+${fmt(s.crystals || 0)}</b></span></div>
@@ -404,7 +412,7 @@
           </div>
           <div class="ov-pnl ov-cut ov-ov-r"><div class="ov-sh"><b>${esc(t('ov.over.details'))}</b></div>
             <div class="ov-kv">${rows.map(([k, v, c]) => `<div style="--sc:var(--${c})"><span class="k">${esc(t(k))}</span><b class="v">${esc(v)}</b></div>`).join('')}</div>
-            ${chests.length ? `<div class="ov-chrow"><span class="k">${esc(t('ov.over.chests'))}</span><span class="v">${chests.slice(0, 8).map(r => `<span class="ov-chi">${img('chest_' + clampR(r), 'pix')}</span>`).join('')}${chests.length > 8 ? `<b>+${chests.length - 8}</b>` : ''}</span></div>` : ''}
+            ${chests.length ? `<div class="ov-chrow"><span class="k">${esc(t('ov.over.chests'))}</span><span class="v">${chests.slice(0, 8).map(r => `<span class="ov-chi">${hdi('chest_' + clampR(r), '')}</span>`).join('')}${chests.length > 8 ? `<b>+${chests.length - 8}</b>` : ''}</span></div>` : ''}
           </div>
         </div>
         <div class="ov-acts">${hints([['ok', 'ov.hint.select'], ['back', 'ov.over.menu']])}<span class="sp"></span>
@@ -438,8 +446,8 @@
     // ship + holo ring
     g.save(); g.lineWidth = 3; g.strokeStyle = rgba(P.cyan, 0.4); g.beginPath(); g.ellipse(300, 468, 190, 36, 0, 0, Math.PI * 2); g.stroke();
     g.setLineDash([10, 10]); g.strokeStyle = rgba(P.cyan, 0.22); g.beginPath(); g.ellipse(300, 470, 128, 22, 0, 0, Math.PI * 2); g.stroke(); g.restore();
-    try { if (NC.assets.has && NC.assets.has('fx_thruster')) { const th = NC.assets.get('fx_thruster'); g.drawImage(th.img, th.w, 0, th.w, th.h, 300 - th.w * 4, 300 + 96, th.w * 8, th.h * 8); } } catch (e) {}
-    try { const sh = NC.assets.get('ship_' + (s.shipId || 'vanator')); g.drawImage(sh.img, 0, 0, sh.w, sh.h, 300 - sh.w * 4, 300 - sh.h * 4, sh.w * 8, sh.h * 8); } catch (e) {}
+    try { if (NC.assets.has && NC.assets.has('fx_thruster')) { const th = NC.assets.get('fx_thruster'); const tw = th.lw || th.w, thh = th.lh || th.h, fw = th.img.width / (th.frames || 1); g.drawImage(th.img, 0, 0, fw, th.img.height, 300 - tw * 4, 300 + 96, tw * 8, thh * 8); } } catch (e) {}
+    try { const sh = NC.assets.get('ship_' + (s.shipId || 'vanator')); const lw = Math.min(64, sh.lw || sh.w), lh = Math.min(64, sh.lh || sh.h), fw = sh.img.width / (sh.frames || 1); g.drawImage(sh.img, 0, 0, fw, sh.img.height, 300 - lw * 3, 300 - lh * 3, lw * 6, lh * 6); } catch (e) {}
     // logo + score
     let logoOk = false;
     try { if (NC.assets.has && NC.assets.has('ui_logo')) { const lg = NC.assets.get('ui_logo'); g.drawImage(lg.img, 0, 0, lg.w, lg.h, 600, 64, lg.w * 2, lg.h * 2); logoOk = true; } } catch (e) {}
@@ -484,7 +492,8 @@
   function chestPlay(m, r, onOpened) {
     const big = m.querySelector('.ov-chest');
     const has = !!(NC.assets && NC.assets.has && NC.assets.has('chest_open_' + r));
-    const frame = f => { try { const c = has ? NC.assets.icon('chest_open_' + r, 2, f) : NC.assets.icon('chest_' + r, 4); c.className = 'pix'; big.replaceChildren(c); } catch (e) { big.innerHTML = img('chest_' + r, 'pix'); } };
+    const hc = hdu('chest_' + r), ho = hdu('chest_open_' + r);
+    const frame = f => { if (hc) { big.innerHTML = `<img class="hd ov-hdch${f > 0 && ho ? ' open' : ''}" src="${esc(f > 0 && ho ? ho : hc)}" alt="">`; return; } try { const c = has ? NC.assets.icon('chest_open_' + r, 2, f) : NC.assets.icon('chest_' + r, 4); c.className = 'pix'; big.replaceChildren(c); } catch (e) { big.innerHTML = hdi('chest_' + r, ''); } };
     frame(0);
     let opened = false;
     return () => {
@@ -492,7 +501,7 @@
       const tap = m.querySelector('.ov-chs-tap'); if (tap) tap.style.visibility = 'hidden';
       sfx('chest_open'); UI.buzz && UI.buzz(30);
       let f = 0; const iv = setInterval(() => {
-        f++; if (has) frame(Math.min(5, f));
+        f++; if (has || (hc && f === 3)) frame(Math.min(5, f));
         if (f >= 6) {
           clearInterval(iv);
           const fl = document.createElement('div'); fl.className = 'ov-flash'; fl.style.setProperty('--rc', 'var(--r' + r + ')'); ($('stage') || document.body).appendChild(fl); setTimeout(() => fl.remove(), 380);
@@ -564,7 +573,7 @@
       const groups = [4, 3, 2, 1, 0].map(q => [q, items.filter(it => clampR(it.r) === q)]).filter(x => x[1].length);
       const ck = Object.keys(cons), cTot = ck.reduce((a, k) => a + cons[k], 0);
       return `<div class="ov-sum ov-pnl ov-cut pop-in" style="--rc:var(--r${r})">
-        <div class="ov-sum-h"><span class="ov-sum-ic">${img('chest_' + r, 'pix')}</span>
+        <div class="ov-sum-h"><span class="ov-sum-ic">${hdi('chest_' + r, '')}</span>
           <div class="tt"><b>${tx('ov.sum.title', { n })}</b><small>${tx('chest.' + r + '.name')} · ${tx('ov.sum.items', { n: items.length })}</small></div><span class="sp"></span>
           <span class="ov-rcs">${groups.map(([q, a]) => `<span class="ov-rc" style="--rc:var(--r${q})"><i></i>${a.length}</span>`).join('')}</span></div>
         <div class="ov-sum-b">
