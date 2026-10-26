@@ -46,8 +46,9 @@
   B.phaseOf = (b) => { if (!b.big) return 0; const f = b.hp / b.max; return f > 2 / 3 ? 0 : f > 1 / 3 ? 1 : 2; };
 
   // ------------------------------------------------------------ creation
-  B.spawnBoss = (idx) => {
-    const R = X.R, G = X.G, def = B.def(idx), hp = Math.round(B.bossHp(idx) * ((NC.game.diffMul && NC.game.diffMul().hp) || 1));
+  B.ATK = {}; // extra attacks {start(b, A, phase), update(b, A, dt, mul) -> done} (story bosses)
+  B.spawnBoss = (idx, over) => { // over = custom def (story world boss)
+    const R = X.R, G = X.G, def = over || B.def(idx), hp = Math.round((over ? over.hp : B.bossHp(idx)) * ((NC.game.diffMul && NC.game.diffMul().hp) || 1));
     const b = R.boss = {
       kind: 'boss', big: true, def, idx, id: def.id, spr: 'boss_' + def.id, size: 112, r: 34, x: G.W / 2, y: -60, tx: G.W / 2, ty: 0,
       hp, max: hp, state: 'enter', phase: 0, step: 0, t: 0, cool: 1.2, atk: null, flash: 0, inv: 0, alpha: 1, untargetable: true,
@@ -58,8 +59,8 @@
     U.sfx('boss_intro'); F().doShake(4);
     return b;
   };
-  B.spawnMini = (n) => {
-    const R = X.R, G = X.G, d = B.miniDef(n);
+  B.spawnMini = (n, over) => {
+    const R = X.R, G = X.G, d = over || B.miniDef(n);
     const hp = Math.round(d.hp * ((NC.game.diffMul && NC.game.diffMul().hp) || 1));
     const b = R.mboss = {
       kind: 'mboss', big: false, def: d, idx: n, id: d.id, spr: 'mboss_' + d.id, size: 48, r: 17, x: U.rnd(60, G.W - 60), y: -30, tx: G.W / 2, ty: 0,
@@ -108,6 +109,7 @@
       case 'spiral': A.dur = (2.4 + ph * 0.4) * (b.big ? 1 : 0.7); A.arms = (b.big ? 3 : 2) + (ph >= 2 ? 1 : 0); A.rot = U.rnd(0, U.TAU); A.next = 0; A.dir = Math.random() < 0.5 ? -1 : 1; break;
       case 'orbs': A.count = 3 + ph; A.next = 0.3; break;
       case 'blink': A.nx = U.rnd(b.size * 0.45, X.G.W - b.size * 0.45); A.ny = B.restY(b, b.big ? 16 : 30); A.dur = 0.8; break;
+      default: if (B.ATK[name]) B.ATK[name].start(b, A, ph); else A.skip = true;
     }
   }
 
@@ -126,7 +128,8 @@
       U.sfx('boss_phase'); NC.Input && NC.Input.buzz && NC.Input.buzz(80, 0.6);
       const d = Math.hypot(p.x - b.x, p.y - b.y) || 1; if (d < 70) { p.vx = (p.x - b.x) / d * 220; p.vy = (p.y - b.y) / d * 220; }
     }
-    if (b.state === 'idle') {
+    if (b.stun > 0) b.stun -= dt; // story: Star Pulse stun
+    else if (b.state === 'idle') {
       ease(2); b.cool -= dt;
       if (b.cool <= 0) { b.state = 'attack'; startAttack(b); }
     } else {
@@ -204,6 +207,7 @@
           }
           break;
         }
+        default: done = A.skip || !B.ATK[A.name] || !!B.ATK[A.name].update(b, A, dt, mul);
       }
       if (done) { b.state = 'idle'; b.atk = null; b.cool = ([1.3, 1.05, 0.85][b.phase] || 0.85) * (b.big ? 1 : 1.3) + U.rnd(0, 0.3); reposition(b); }
     }

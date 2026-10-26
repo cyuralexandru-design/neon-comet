@@ -5,7 +5,7 @@
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = NC.fx, EN = NC.enemies, B = NC.bosses, W = NC.weapons;
-  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.1.3', hudTop: 22 };
+  const G = NC.game = { mode: 'menu', W: 320, H: 200, run: null, fps: 60, version: '3.2.0', hudTop: 22 };
   X.G = G;
   // HUD safe line (logical px): HUD agent sets NC.game.hudTop = bottom of the top HUD; nothing rests above hudTop + 4
   X.safeTop = () => { const h = +G.hudTop; return U.clamp(isFinite(h) && h > 0 ? h : 22, 0, G.H * 0.3) + 4; };
@@ -96,12 +96,13 @@
       p: { x: G.W / 2, y: G.H * 0.78, vx: 0, vy: 0, r: 5, hp: 1, shd: 1, shdT: 0, inv: 1.5, dashT: 0, dashCd: 0, fireT: 0.3, alive: true, hurtT: 0, aimAng: -Math.PI / 2 },
       lvlBefore: st.lvl,
     };
+    if (loadout && loadout.story && X.storyInit) X.storyInit(R, loadout.story); // story mode hook (js/story/engine.js)
     applyMaxes(); R.p.hp = R.maxHp; R.p.shd = R.maxShd;
     W.setup(); F.reset();
     G.mode = 'play'; NC.Input.clear();
-    U.music(R.biome);
+    U.music(R.musicId || R.biome);
     U.ui('onRunStart');
-    sectorUi();
+    if (!R.story) sectorUi();
     logRoster();
     return R;
   };
@@ -258,6 +259,7 @@
     R.items.push({ kind: 'chest', r: def.chest != null ? def.chest : 1, x: b.x, y: b.y, vx: 0, vy: 20, t: 0 });
     R.p.hp = Math.min(R.maxHp, R.p.hp + R.maxHp * (((D().HEAL || {}).bossKill) != null ? D().HEAL.bossKill : 0.5)); R.p.shd = R.maxShd;
     R.boss = null; R.bossIdx++; R.bossesKilled++; sys('track', 'bosses', 1);
+    if (R.story) { U.ui('hideBossBar'); alert('bossDown', { id: def.id, nameKey: b.nameKey }); if (X.storyBossDown) X.storyBossDown(b); return; }
     R.nextBoss = D().bossScore ? D().bossScore(R.bossIdx) : (R.bossIdx + 1) * BOSS_EVERY();
     U.ui('hideBossBar');
     alert('bossDown', { id: def.id, nameKey: 'boss.' + def.id + '.name' });
@@ -270,6 +272,7 @@
     R.score += def.points || 2000; X.dropCrystals(b.x, b.y, (def.cr || 600) * R.st.crMult, 5, true); X.dropXp(b.x, b.y, 25, 5, true);
     R.items.push({ kind: 'chest', r: def.chest || 0, x: b.x, y: b.y, vx: 0, vy: 20, t: 0 });
     R.mboss = null; sys('track', 'mbosses', 1); U.ui('hideBossBar');
+    if (R.story && X.storyBossDown) X.storyBossDown(b);
   }
   function setSector(s) {
     const R = X.R; R.sector = s; R.biome = BIOMES[s % BIOMES.length];
@@ -316,6 +319,7 @@
   // ------------------------------------------------------------ director
   function director(dt) {
     const R = X.R;
+    if (R.story) { if (X.storyDirector) X.storyDirector(dt); return; } // story: scripted waves, no endless spawner/sector bosses/events
     if (!R.boss && !R.bossIntro && R.score >= R.nextBoss) startBossIntro();
     if (R.bossIntro > 0) {
       R.bossIntro -= dt;
@@ -370,7 +374,7 @@
     const wantDash = X.botInput ? X.botInput.dash : I.take('dash');
     if (wantDash && p.dashCd <= 0) {
       let dx = X.botInput ? X.botInput.x : I.move.x, dy = X.botInput ? X.botInput.y : I.move.y; if (!dx && !dy) { dx = 0; dy = -1; }
-      const m = Math.hypot(dx, dy) || 1; p.vx = dx / m * 330; p.vy = dy / m * 330; p.dashT = 0.18; p.dashCd = st.dashCd * R.m.dashCd;
+      const m = Math.hypot(dx, dy) || 1; p.vx = dx / m * 330; p.vy = dy / m * 330; p.dashT = 0.18 * (st.dashRange || 1); p.dashCd = st.dashCd * R.m.dashCd;
       F.burst(p.x, p.y, '#2ce8f5', 8, 60); U.sfx('dash'); I.buzz(20, 0.3); sys('track', 'dashes', 1);
     } else if (!X.botInput) I.take('dash');
     // consumables
@@ -479,13 +483,15 @@
     R.time += dt;
     if (R.dying > 0) { R.dying -= dt; if (R.dying <= 0) { R.dying = 0; afterDeath(); return; } }
     updatePlayer(dt);
+    if (R.story && X.storyStep) { X.storyStep(dt); targetsCache = null; }
     director(dt);
-    EN.update(dt); targetsCache = null;
-    B.update(dt); targetsCache = null;
+    const es = R.slow > 0 ? 0.5 : 1; // story: Echo Sight slows enemies/bosses/enemy fire to 50%
+    EN.update(dt * es); targetsCache = null;
+    B.update(dt * es); targetsCache = null;
     updateRocks(dt); targetsCache = null;
     W.update(dt);
     W.updateBullets(dt);
-    updateEnemyFire(dt);
+    updateEnemyFire(dt * es);
     updateItems(dt);
     for (const e of R.enemies) if (e.dead && !e._done) { e._done = true; }
     R.enemies = R.enemies.filter(e => !e.dead);
@@ -495,6 +501,7 @@
     if (R.pendingCards > 0 && p.alive && G.mode === 'play' && R.dying <= 0) openCards();
   }
 
+  X.homeAll = homeAll; X.alert = alert; X.applyMaxes = applyMaxes; X.resetTargets = () => { targetsCache = null; };
   // ------------------------------------------------------------ cards
   function cardList() { return (D().CARDS && D().CARDS.length ? D().CARDS : DEFAULT_CARDS); }
   const DEFAULT_CARDS = [['dmg', 10, 10, 0.15], ['rate', 8, 10, 0.12], ['gun', 3, 6, 1], ['pierce', 2, 4, 1], ['bounce', 2, 5, 1], ['missile', 4, 6, 1], ['orbit', 4, 6, 1], ['shield', 5, 8, 0.3], ['heal', 99, 7, 0.4], ['magnet', 3, 5, 0.5], ['speed', 4, 6, 0.1], ['crit', 5, 7, 0.08], ['vamp', 3, 4, 0.01],
@@ -592,6 +599,7 @@
   // ------------------------------------------------------------ end of run
   function endRun(show) {
     const R = G.run; if (!R) return null;
+    if (R.story && X.storyEnd) return X.storyEnd(false, show);
     G.mode = 'over';
     const res = sys('endRun', { score: R.score, sector: R.sector, combo: R.maxCombo, time: R.time, xp: R.xp, kills: R.kills, bosses: R.bossesKilled }) || {};
     sys('flush');
@@ -617,6 +625,7 @@
     const dcd = R.st.dashCd * R.m.dashCd; h.dashCd01 = dcd > 0 ? U.clamp(p.dashCd / dcd, 0, 1) : 0;
     h.consumables = R.cons.map(c => ({ id: c.id, count: c.count, cd01: c.max ? U.clamp(c.cd / c.max, 0, 1) : 0 }));
     h.boss = b ? { nameKey: b.nameKey, hp01: b.state !== 'enter' ? U.clamp(b.hp / b.max, 0, 1) : 1, mini: !b.big, segs: b.big ? B.PHASES : 1, phase: b.state !== 'enter' ? b.phase : 0, id: b.id } : null;
+    h.crew = R.story && X.storyHud ? X.storyHud() : null;
     h.buffs = Object.assign({}, R.buffs); h.event = R.event ? R.event.id : null; h.time = R.time; h.evolved = R.evolved; h.enemies = R.enemies.length;
   }
 

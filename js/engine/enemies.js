@@ -99,7 +99,9 @@
       e.t += dt; e.flash = Math.max(0, e.flash - dt);
       if (e.burn) { e.burn.t -= dt; e.burnTick = (e.burnTick || 0) - dt; if (e.burnTick <= 0) { e.burnTick = 0.25; X.damage(e, e.burn.dps * 0.25, false, e.x, e.y, { quiet: true }); } if (e.burn && e.burn.t <= 0) e.burn = null; if (e.dead) continue; }
       if (e.entering) { e.y += e.vy * dt; if (e.y >= top(e)) { e.entering = false; e.vy = e.d.sp * 0.5; } continue; }
-      ai(e, dt, R, G, p);
+      if (e.ally) { if (EN.allyAI) EN.allyAI(e, dt); } // story hooks: hijacked ally / stunned
+      else if (e.stun > 0) { e.stun -= dt; e.vx *= Math.pow(0.02, dt); e.vy *= Math.pow(0.02, dt); }
+      else ai(e, dt, R, G, p);
       if (R.event && R.event.id === 'blackhole') X.gravity(e, dt, 0.25);
       e.x += e.vx * dt; e.y += e.vy * dt;
       const h = e.size / 2;
@@ -112,7 +114,7 @@
         if (!e.wrap && e.y < ty) { e.y += (ty - e.y) * Math.min(1, dt * 6) + 4 * dt; if (e.vy < 0) e.vy = -e.vy * 0.5; }
       }
       // contact with player
-      if (p.alive && !e.cloaked && U.d2(e.x, e.y, p.x, p.y) < (e.r + p.r) ** 2) X.contact(e);
+      if (p.alive && !e.cloaked && !e.ally && U.d2(e.x, e.y, p.x, p.y) < (e.r + p.r) ** 2) X.contact(e);
     }
   };
 
@@ -187,11 +189,14 @@
         if (e.fireT <= 0) { const t = lead(e.x, e.y, 90); X.R.shells.push({ x0: e.x, y0: e.y, x: U.clamp(t.x, 6, G.W - 6), y: U.clamp(t.y, 6, G.H - 6), t: 0, dur: 1.3, r: 18, dmg: e.dmg }); e.fireT = U.rnd(3.2, 4); }
         break;
       }
+      default: if (EN.AI[d.ai]) EN.AI[d.ai](e, dt, R, G, p); // extra AIs registered by js/story/engine.js
     }
   }
+  EN.AI = {}; EN.DEATH = {}; EN.steer = steer; EN.aimAt = aimAt; EN.band = band;
 
   // on death (after rewards): splitter splits
   EN.onDeath = (e) => {
+    if (EN.DEATH[e.type]) EN.DEATH[e.type](e);
     if (e.type === 'splitter' && !e.silent) for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + (i - 1) * 1.2 + Math.PI; EN.spawn('shard', { x: e.x, y: e.y, vx: Math.cos(a) * 55, vy: Math.sin(a) * 55, elite: false }); }
   };
 })(window.NC = window.NC || {});

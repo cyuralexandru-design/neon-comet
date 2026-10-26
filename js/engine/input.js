@@ -50,11 +50,17 @@
   // NC.Input.press('dash'|'pause'|'cons', slotIndex)
   I.press = (name, i) => {
     if (name === 'cons') { if (i >= 0 && i < 3) I.q.cons[i] = true; }
+    else if (name === 'ab') { if (i >= 0 && i < 3) I.q.ab[i] = true; }
     else if (name in I.q) I.q[name] = true;
   };
   I.take = (name) => { const v = I.q[name]; I.q[name] = false; return v; };
+  // story mode crew abilities (slots 0-2): keys 1/2/3, gamepad L1/R1/L2 (free in play since 3.1)
+  I.q.ab = [false, false, false];
+  I.PAD_STORY = [BT.L1, BT.R1, BT.L2];
+  const storyRun = () => !!(NC.game && NC.game.run && NC.game.run.story);
+  I.takeAb = (i) => { const v = I.q.ab[i]; I.q.ab[i] = false; return v; };
   I.takeCons = (i) => { const v = I.q.cons[i]; I.q.cons[i] = false; return v; };
-  I.clear = () => { I.q.dash = I.q.pause = false; I.q.cons = [false, false, false]; };
+  I.clear = () => { I.q.dash = I.q.pause = false; I.q.cons = [false, false, false]; I.q.ab = [false, false, false]; };
   I.setDevice = (d) => { if (I.device !== d) { I.device = d; U.ui('onInputDevice', d); } };
 
   // ------------------------------------------------------------ keyboard
@@ -76,9 +82,9 @@
       return;
     }
     if (c === 'Space' || c === 'ShiftLeft' || c === 'ShiftRight' || k === ' ') I.q.dash = true;
-    if (c === 'Digit1' || c === 'Numpad1') I.q.cons[0] = true;
-    if (c === 'Digit2' || c === 'Numpad2') I.q.cons[1] = true;
-    if (c === 'Digit3' || c === 'Numpad3') I.q.cons[2] = true;
+    const story = storyRun(); // story: 1/2/3 = crew abilities, 4/5/6 = consumables
+    const dg = { Digit1: 0, Numpad1: 0, Digit2: 1, Numpad2: 1, Digit3: 2, Numpad3: 2, Digit4: 3, Numpad4: 3, Digit5: 4, Numpad5: 4, Digit6: 5, Numpad6: 5 }[c];
+    if (dg != null) { if (story) { if (dg < 3) I.q.ab[dg] = true; else I.q.cons[dg - 3] = true; } else if (dg < 3) I.q.cons[dg] = true; }
     if (c === 'KeyP' || c === 'Escape') I.q.pause = true;
   });
   addEventListener('keyup', (e) => { I.keys[e.code || ''] = false; });
@@ -295,6 +301,7 @@
       const P = I.PAD_PLAY;
       if (pressed(P.dash)) I.q.dash = true;
       for (let k = 0; k < 3; k++) if (pressed(P.cons[k])) I.q.cons[k] = true;
+      if (storyRun()) I.PAD_STORY.forEach((b, k) => { if (pressed(b)) I.q.ab[k] = true; });
       if (pressed(P.pause)) I.q.pause = true;
     }
     I._prev = s.b.slice();

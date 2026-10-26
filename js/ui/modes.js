@@ -1,5 +1,5 @@
 'use strict';
-// Neon Comet 3.1.1 - start flow: Start -> mode cards (Survival | Coming soon) -> difficulty cards (Easy/Normal/Hard/Nightmare) -> loadout -> run.
+// Neon Comet 3.1.1 - start flow: Start -> mode cards (Survival | Story) -> difficulty cards (Easy/Normal/Hard/Nightmare) -> loadout -> run.
 (function (NC) {
   const UI = NC.ui = NC.ui || {};
   const t = (k, v) => NC.t(k, v), esc = s => (UI.esc ? UI.esc(String(s)) : String(s));
@@ -12,13 +12,13 @@
     cls: 'dim modes',
     render(el) {
       el.innerHTML = `<div class="scr-h"><button class="btn back sq" data-f data-a="back">&lt;</button><h2>${esc(t('md.title'))}</h2><span class="sp"></span></div>
-        <div class="md-row md-2">${card('mode_survival', 'SURVIVAL', 'mode', 'survival', 'md-r3 first')}${card('mode_soon', t('md.soon'), 'mode', 'soon', 'md-lock')}</div>`;
+        <div class="md-row md-2">${card('mode_survival', 'SURVIVAL', 'mode', 'survival', 'md-r3 first')}${card(NC.assets && NC.assets.has && NC.assets.has('mode_story') ? 'mode_story' : 'mode_soon', t('sui.mode'), 'mode', 'story', 'md-r1')}</div>`;
       const f = el.querySelector('.md-card'); f && f.setAttribute('data-first', '');
     },
     act(a, node) {
       if (a === 'back') return UI.back();
       if (a === 'mode') {
-        if (node.dataset.id === 'soon') { UI.toast && UI.toast(t('md.soonToast')); UI.sfx && UI.sfx('error'); return; }
+        if (node.dataset.id === 'story') { UI.sfx && UI.sfx('click'); if (UI.screens.story) UI.show('story'); else UI.toast && UI.toast(t('md.soonToast')); return; }
         UI.sfx && UI.sfx('click'); UI.show('diff');
       }
     }

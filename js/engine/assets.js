@@ -51,13 +51,17 @@
     proj_laser_evo: [2, 6, 1, 0], proj_plasma_evo: [6, 6, 1, 0], proj_missile_evo: [4, 8, 1, 0], proj_rail_evo: [3, 12, 1, 0], proj_flame_evo: [8, 8, 3, 12],
     eb_small: [6, 6, 1, 0], eb_big: [10, 10, 1, 0], eb_beam: [6, 6, 1, 0],
     pk_star: [4, 4, 4, 6], pk_crystal: [7, 7, 4, 5], pk_xp: [7, 7, 4, 6], pk_supernova: [16, 16, 4, 8], pk_repair: [12, 12, 1, 0],
-    ui_rotate: [64, 64, 1, 0], ui_logo: [200, 48, 1, 0], ui_crystal: [10, 10, 1, 0], ui_star: [10, 10, 1, 0], ui_lock: [12, 12, 1, 0],
+    ui_rotate: [64, 64, 1, 0],
+    // story mode (tools/art/story_art.py)
+    en_scav: [24, 24, 4, 8], en_hulk: [40, 40, 2, 4], en_hulk_scrap: [16, 16, 2, 6], en_ghost: [24, 24, 4, 8], en_tether: [32, 32, 2, 6], en_tether_mine: [12, 12, 2, 4],
+    eb_tether: [6, 6, 1, 0], ui_clue: [16, 16, 1, 0], ui_star_on: [16, 16, 1, 0], ui_star_off: [16, 16, 1, 0],
+    boss_graveking_p2: [112, 112, 3, 6], boss_graveking_p3: [112, 112, 3, 8], ui_logo: [200, 48, 1, 0], ui_crystal: [10, 10, 1, 0], ui_star: [10, 10, 1, 0], ui_lock: [12, 12, 1, 0],
   };
   const PREFIX = [ // [regex, w, h, frames, fps]
     [/^ship_/, 32, 32, 1, 0], [/^wpn_/, 24, 24, 1, 0], [/^tur_/, 16, 16, 1, 0], [/^icon_/, 24, 24, 1, 0], [/^comp_/, 16, 16, 1, 0],
     [/^gear_/, 24, 24, 1, 0], [/^cons_/, 24, 24, 1, 0], [/^chest_open_/, 48, 48, 6, 10], [/^chest_/, 24, 24, 1, 0],
     [/^boss_.*_anim$/, 112, 112, 3, 6], [/^boss_/, 112, 112, 1, 0], [/^mboss_/, 48, 48, 1, 0], [/^card_/, 56, 48, 1, 0],
-    [/^bg_/, 320, 180, 1, 0], [/^ui_alert_/, 16, 16, 1, 0], [/^ui_tab_/, 16, 16, 1, 0], [/^btn_ps_/, 12, 12, 1, 0], [/^ui_pip_/, 7, 7, 1, 0], [/^en_/, 16, 16, 2, 6],
+    [/^bg_/, 320, 180, 1, 0], [/^ui_alert_/, 16, 16, 1, 0], [/^ui_tab_/, 16, 16, 1, 0], [/^btn_ps_/, 12, 12, 1, 0], [/^ui_pip_/, 7, 7, 1, 0], [/^world_/, 32, 32, 1, 0], [/^ci_/, 24, 24, 1, 0], [/^ab_/, 20, 20, 1, 0], [/^crew_/, 40, 34, 2, 3], [/^en_/, 16, 16, 2, 6],
   ];
   const declared = {}; // runtime declarations from engine modules (enemy sizes)
   const A = NC.assets = {

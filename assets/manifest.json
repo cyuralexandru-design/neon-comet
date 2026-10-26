@@ -1,6 +1,72 @@
 {
  "version": 1,
  "sprites": {
+  "ab_brakk": {
+   "file": "ab_brakk.png",
+   "w": 20,
+   "h": 20,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    10,
+    10
+   ]
+  },
+  "ab_iko": {
+   "file": "ab_iko.png",
+   "w": 20,
+   "h": 20,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    10,
+    10
+   ]
+  },
+  "ab_kael": {
+   "file": "ab_kael.png",
+   "w": 20,
+   "h": 20,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    10,
+    10
+   ]
+  },
+  "ab_nyra": {
+   "file": "ab_nyra.png",
+   "w": 20,
+   "h": 20,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    10,
+    10
+   ]
+  },
+  "ab_sable": {
+   "file": "ab_sable.png",
+   "w": 20,
+   "h": 20,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    10,
+    10
+   ]
+  },
+  "ab_vesh": {
+   "file": "ab_vesh.png",
+   "w": 20,
+   "h": 20,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    10,
+    10
+   ]
+  },
   "bg_asteroid_1": {
    "file": "bg_asteroid_1.png",
    "w": 320,
@@ -177,6 +243,50 @@
     0
    ]
   },
+  "bg_wreck_1": {
+   "file": "bg_wreck_1.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_wreck_2": {
+   "file": "bg_wreck_2.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_wreck_3": {
+   "file": "bg_wreck_3.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
+  "bg_wreck_4": {
+   "file": "bg_wreck_4.png",
+   "w": 320,
+   "h": 180,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    0,
+    0
+   ]
+  },
   "boss_colos": {
    "file": "boss_colos.png",
    "w": 112,
@@ -205,6 +315,61 @@
    "h": 112,
    "frames": 1,
    "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_graveking": {
+   "file": "boss_graveking.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_graveking_anim": {
+   "file": "boss_graveking_anim.png",
+   "w": 112,
+   "h": 112,
+   "frames": 3,
+   "fps": 6,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_graveking_dmg": {
+   "file": "boss_graveking_dmg.png",
+   "w": 112,
+   "h": 112,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_graveking_p2": {
+   "file": "boss_graveking_p2.png",
+   "w": 112,
+   "h": 112,
+   "frames": 3,
+   "fps": 6,
+   "anchor": [
+    56,
+    56
+   ]
+  },
+  "boss_graveking_p3": {
+   "file": "boss_graveking_p3.png",
+   "w": 112,
+   "h": 112,
+   "frames": 3,
+   "fps": 8,
    "anchor": [
     56,
     56
@@ -441,6 +606,17 @@
     24
    ]
   },
+  "card_evo_blaster": {
+   "file": "card_evo_blaster.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
   "card_evo_flame": {
    "file": "card_evo_flame.png",
    "w": 56,
@@ -584,6 +760,94 @@
     24
    ]
   },
+  "card_sp_blackhole": {
+   "file": "card_sp_blackhole.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_sp_chain": {
+   "file": "card_sp_chain.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_sp_frost": {
+   "file": "card_sp_frost.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_sp_overcharge": {
+   "file": "card_sp_overcharge.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_sp_phoenix": {
+   "file": "card_sp_phoenix.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_sp_shieldnova": {
+   "file": "card_sp_shieldnova.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_sp_timewarp": {
+   "file": "card_sp_timewarp.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
+  "card_sp_vampfield": {
+   "file": "card_sp_vampfield.png",
+   "w": 56,
+   "h": 48,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    28,
+    24
+   ]
+  },
   "card_speed": {
    "file": "card_speed.png",
    "w": 56,
@@ -716,6 +980,171 @@
     24
    ]
   },
+  "ci_arcpistol": {
+   "file": "ci_arcpistol.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_beacon": {
+   "file": "ci_beacon.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_compass": {
+   "file": "ci_compass.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_cooler": {
+   "file": "ci_cooler.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_dermplate": {
+   "file": "ci_dermplate.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_halo": {
+   "file": "ci_halo.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_hourglass": {
+   "file": "ci_hourglass.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_magnum": {
+   "file": "ci_magnum.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_nervelink": {
+   "file": "ci_nervelink.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_oculus": {
+   "file": "ci_oculus.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_pulselance": {
+   "file": "ci_pulselance.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_reactor": {
+   "file": "ci_reactor.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_relic": {
+   "file": "ci_relic.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_scrapblade": {
+   "file": "ci_scrapblade.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
+  "ci_shardcaster": {
+   "file": "ci_shardcaster.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
   "comp_guardian": {
    "file": "comp_guardian.png",
    "w": 16,
@@ -815,6 +1244,116 @@
     12
    ]
   },
+  "crew_brakk": {
+   "file": "crew_brakk.png",
+   "w": 40,
+   "h": 34,
+   "frames": 2,
+   "fps": 3,
+   "anchor": [
+    20,
+    17
+   ]
+  },
+  "crew_iko": {
+   "file": "crew_iko.png",
+   "w": 40,
+   "h": 34,
+   "frames": 2,
+   "fps": 3,
+   "anchor": [
+    20,
+    17
+   ]
+  },
+  "crew_kael": {
+   "file": "crew_kael.png",
+   "w": 40,
+   "h": 34,
+   "frames": 2,
+   "fps": 3,
+   "anchor": [
+    20,
+    17
+   ]
+  },
+  "crew_nyra": {
+   "file": "crew_nyra.png",
+   "w": 40,
+   "h": 34,
+   "frames": 2,
+   "fps": 3,
+   "anchor": [
+    20,
+    17
+   ]
+  },
+  "crew_sable": {
+   "file": "crew_sable.png",
+   "w": 40,
+   "h": 34,
+   "frames": 2,
+   "fps": 3,
+   "anchor": [
+    20,
+    17
+   ]
+  },
+  "crew_vesh": {
+   "file": "crew_vesh.png",
+   "w": 40,
+   "h": 34,
+   "frames": 2,
+   "fps": 3,
+   "anchor": [
+    20,
+    17
+   ]
+  },
+  "diff_easy": {
+   "file": "diff_easy.png",
+   "w": 72,
+   "h": 104,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    36,
+    52
+   ]
+  },
+  "diff_hard": {
+   "file": "diff_hard.png",
+   "w": 72,
+   "h": 104,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    36,
+    52
+   ]
+  },
+  "diff_nightmare": {
+   "file": "diff_nightmare.png",
+   "w": 72,
+   "h": 104,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    36,
+    52
+   ]
+  },
+  "diff_normal": {
+   "file": "diff_normal.png",
+   "w": 72,
+   "h": 104,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    36,
+    52
+   ]
+  },
   "eb_beam": {
    "file": "eb_beam.png",
    "w": 6,
@@ -839,6 +1378,17 @@
   },
   "eb_small": {
    "file": "eb_small.png",
+   "w": 6,
+   "h": 6,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    3,
+    3
+   ]
+  },
+  "eb_tether": {
+   "file": "eb_tether.png",
    "w": 6,
    "h": 6,
    "frames": 1,
@@ -914,6 +1464,17 @@
     8
    ]
   },
+  "en_ghost": {
+   "file": "en_ghost.png",
+   "w": 24,
+   "h": 24,
+   "frames": 4,
+   "fps": 8,
+   "anchor": [
+    12,
+    12
+   ]
+  },
   "en_gunner": {
    "file": "en_gunner.png",
    "w": 24,
@@ -923,6 +1484,28 @@
    "anchor": [
     12,
     12
+   ]
+  },
+  "en_hulk": {
+   "file": "en_hulk.png",
+   "w": 40,
+   "h": 40,
+   "frames": 2,
+   "fps": 4,
+   "anchor": [
+    20,
+    20
+   ]
+  },
+  "en_hulk_scrap": {
+   "file": "en_hulk_scrap.png",
+   "w": 16,
+   "h": 16,
+   "frames": 2,
+   "fps": 6,
+   "anchor": [
+    8,
+    8
    ]
   },
   "en_hunter": {
@@ -958,6 +1541,17 @@
     6
    ]
   },
+  "en_scav": {
+   "file": "en_scav.png",
+   "w": 24,
+   "h": 24,
+   "frames": 4,
+   "fps": 8,
+   "anchor": [
+    12,
+    12
+   ]
+  },
   "en_sentinel": {
    "file": "en_sentinel.png",
    "w": 32,
@@ -989,6 +1583,28 @@
    "anchor": [
     16,
     16
+   ]
+  },
+  "en_tether": {
+   "file": "en_tether.png",
+   "w": 32,
+   "h": 32,
+   "frames": 2,
+   "fps": 6,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "en_tether_mine": {
+   "file": "en_tether_mine.png",
+   "w": 12,
+   "h": 12,
+   "frames": 2,
+   "fps": 4,
+   "anchor": [
+    6,
+    6
    ]
   },
   "en_wraith": {
@@ -1431,6 +2047,39 @@
     24
    ]
   },
+  "mboss_salvager": {
+   "file": "mboss_salvager.png",
+   "w": 48,
+   "h": 48,
+   "frames": 3,
+   "fps": 6,
+   "anchor": [
+    24,
+    24
+   ]
+  },
+  "mode_soon": {
+   "file": "mode_soon.png",
+   "w": 72,
+   "h": 104,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    36,
+    52
+   ]
+  },
+  "mode_survival": {
+   "file": "mode_survival.png",
+   "w": 72,
+   "h": 104,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    36,
+    52
+   ]
+  },
   "pk_crystal": {
    "file": "pk_crystal.png",
    "w": 7,
@@ -1484,6 +2133,28 @@
    "anchor": [
     3,
     3
+   ]
+  },
+  "proj_blaster": {
+   "file": "proj_blaster.png",
+   "w": 3,
+   "h": 7,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    1,
+    3
+   ]
+  },
+  "proj_blaster_evo": {
+   "file": "proj_blaster_evo.png",
+   "w": 7,
+   "h": 8,
+   "frames": 2,
+   "fps": 12,
+   "anchor": [
+    3,
+    4
    ]
   },
   "proj_flame": {
@@ -1948,6 +2619,17 @@
     8
    ]
   },
+  "ui_clue": {
+   "file": "ui_clue.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
   "ui_crystal": {
    "file": "ui_crystal.png",
    "w": 10,
@@ -2058,6 +2740,28 @@
     5
    ]
   },
+  "ui_star_off": {
+   "file": "ui_star_off.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
+  "ui_star_on": {
+   "file": "ui_star_on.png",
+   "w": 16,
+   "h": 16,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    8,
+    8
+   ]
+  },
   "ui_tab_chests": {
    "file": "ui_tab_chests.png",
    "w": 16,
@@ -2135,6 +2839,94 @@
     8
    ]
   },
+  "world_crystal": {
+   "file": "world_crystal.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "world_edge": {
+   "file": "world_edge.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "world_gas": {
+   "file": "world_gas.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "world_hive": {
+   "file": "world_hive.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "world_jungle": {
+   "file": "world_jungle.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "world_machine": {
+   "file": "world_machine.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "world_wreck": {
+   "file": "world_wreck.png",
+   "w": 32,
+   "h": 32,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    16,
+    16
+   ]
+  },
+  "wpn_blaster": {
+   "file": "wpn_blaster.png",
+   "w": 24,
+   "h": 24,
+   "frames": 1,
+   "fps": 0,
+   "anchor": [
+    12,
+    12
+   ]
+  },
   "wpn_flame": {
    "file": "wpn_flame.png",
    "w": 24,
@@ -2181,204 +2973,6 @@
   },
   "wpn_rail": {
    "file": "wpn_rail.png",
-   "w": 24,
-   "h": 24,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    12,
-    12
-   ]
-  },
-  "card_evo_blaster": {
-   "file": "card_evo_blaster.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "card_sp_blackhole": {
-   "file": "card_sp_blackhole.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "card_sp_chain": {
-   "file": "card_sp_chain.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "card_sp_frost": {
-   "file": "card_sp_frost.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "card_sp_overcharge": {
-   "file": "card_sp_overcharge.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "card_sp_phoenix": {
-   "file": "card_sp_phoenix.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "card_sp_shieldnova": {
-   "file": "card_sp_shieldnova.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "card_sp_timewarp": {
-   "file": "card_sp_timewarp.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "card_sp_vampfield": {
-   "file": "card_sp_vampfield.png",
-   "w": 56,
-   "h": 48,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    28,
-    24
-   ]
-  },
-  "diff_easy": {
-   "file": "diff_easy.png",
-   "w": 72,
-   "h": 104,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    36,
-    52
-   ]
-  },
-  "diff_hard": {
-   "file": "diff_hard.png",
-   "w": 72,
-   "h": 104,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    36,
-    52
-   ]
-  },
-  "diff_nightmare": {
-   "file": "diff_nightmare.png",
-   "w": 72,
-   "h": 104,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    36,
-    52
-   ]
-  },
-  "diff_normal": {
-   "file": "diff_normal.png",
-   "w": 72,
-   "h": 104,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    36,
-    52
-   ]
-  },
-  "mode_soon": {
-   "file": "mode_soon.png",
-   "w": 72,
-   "h": 104,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    36,
-    52
-   ]
-  },
-  "mode_survival": {
-   "file": "mode_survival.png",
-   "w": 72,
-   "h": 104,
-   "frames": 1,
-   "fps": 0,
-   "anchor": [
-    36,
-    52
-   ]
-  },
-  "proj_blaster": {
-   "file": "proj_blaster.png",
-   "w": 3,
-   "h": 7,
-   "frames": 2,
-   "fps": 12,
-   "anchor": [
-    1,
-    3
-   ]
-  },
-  "proj_blaster_evo": {
-   "file": "proj_blaster_evo.png",
-   "w": 7,
-   "h": 8,
-   "frames": 2,
-   "fps": 12,
-   "anchor": [
-    3,
-    4
-   ]
-  },
-  "wpn_blaster": {
-   "file": "wpn_blaster.png",
    "w": 24,
    "h": 24,
    "frames": 1,
