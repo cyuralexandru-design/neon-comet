@@ -162,7 +162,7 @@
       // DOM text under the bar (readable UI font instead of canvas pixels)
       const pos = (bx * K / DPR).toFixed(1) + '|' + ((by + 10) * K / DPR).toFixed(1) + '|' + (bw * K / DPR).toFixed(1);
       if (pos !== lastPos) { lastPos = pos; const p = pos.split('|'); txt.style.left = p[0] + 'px'; txt.style.top = p[1] + 'px'; txt.style.width = p[2] + 'px'; txt.hidden = false; }
-      const lab = shown >= 1 ? t('ov.load.ready') : t('ov.load.text') + '.'.repeat(Math.floor(time / 0.35) % 4);
+      const lab = shown >= 1 ? t('ov.load.ready') : t('ov.load.text') + '.'.repeat(Math.max(0, Math.floor(time / 0.35) % 4));
       if (lab !== lastL) { lastL = lab; tl.textContent = lab; }
       const pc = Math.floor(shown * 100) + '%'; if (pc !== lastP) { lastP = pc; tp.textContent = pc; }
       requestAnimationFrame(draw);
