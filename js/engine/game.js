@@ -5,7 +5,7 @@
 (function (NC) {
   const U = NC.U, X = NC.eng = NC.eng || {};
   const F = NC.fx, EN = NC.enemies, B = NC.bosses, W = NC.weapons;
-  const G = NC.game = { mode: 'menu', W: 200, H: 420, run: null, fps: 60, version: '4.0.0', hudTop: 22, hudBottom: 0 };
+  const G = NC.game = { mode: 'menu', W: 200, H: 420, run: null, fps: 60, version: '4.0.1', hudTop: 22, hudBottom: 0 };
   X.G = G;
   // HUD safe line (logical px): HUD agent sets NC.game.hudTop = bottom of the top HUD; nothing rests above hudTop + 4
   // 4.0 bottom safe zone (logical px from the bottom edge) for the touch buttons: pickups rest above it, player stays mostly above
@@ -158,12 +158,12 @@
     if (t.kind === 'boss' || t.kind === 'mboss') {
       if (t.inv > 0 || t.untargetable || t.state === 'enter') return;
       t.hp -= dmg; t.flash = 0.05;
-      if (!(o && o.quiet)) { F.dmg(x != null ? x : t.x, y != null ? y : t.y, dmg, crit); U.sfx(crit ? 'crit' : 'hit'); }
+      if (!(o && o.quiet)) { F.dmg(x != null ? x : t.x, y != null ? y : t.y, dmg, crit, t); U.sfx(crit ? 'crit' : 'hit'); }
       if (t.hp <= 0) { t.dead = true; if (t.kind === 'boss') killBoss(t); else killMini(t); }
       return;
     }
     t.hp -= dmg; t.flash = 0.06;
-    if (!(o && o.quiet)) { F.dmg(x != null ? x : t.x, y != null ? y : t.y - 4, dmg, crit); U.sfx(crit ? 'crit' : 'hit'); }
+    if (!(o && o.quiet)) { F.dmg(x != null ? x : t.x, y != null ? y : t.y - 4, dmg, crit, t); U.sfx(crit ? 'crit' : 'hit'); }
     if (t.hp > 0) return;
     t.dead = true;
     if (t.kind === 'enemy') killEnemy(t);

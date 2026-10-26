@@ -59,3 +59,8 @@
     'ov.share.sector': 'Sector', 'ov.share.bosses': 'Bosses',
   });
 })(window.NC = window.NC || {});
+// 4.0 fix pass
+(function (NC) {
+  Object.assign(NC.I18N.ro, { 'ov.sum.dups': '{n} duplicate -> minereu' });
+  Object.assign(NC.I18N.en, { 'ov.sum.dups': '{n} duplicates -> ore' });
+})(window.NC = window.NC || {});

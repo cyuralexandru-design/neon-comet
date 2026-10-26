@@ -153,7 +153,7 @@
     });
   }
   A.preload = (ids) => Promise.all((ids || []).filter(id => A.hdMan[id]).map(loadHd));
-  const EAGER = /^(ship_|en_|mboss_|ore_|pk_|proj_|eb_|fx_|chest_\d|tur_|comp_|sec_\w+_(obj|proj)|sec_mine)/;
+  const EAGER = /^(ship_|boss_|en_|mboss_|ore_|pk_|proj_|eb_|fx_|chest_\d|tur_|comp_|sec_\w+_(obj|proj)|sec_mine)/;
   async function loadHdManifest() {
     const m = await fetchJson(A.hdUrl); if (!m || typeof m !== 'object') return;
     const map = m.sprites && typeof m.sprites === 'object' ? m.sprites : m;

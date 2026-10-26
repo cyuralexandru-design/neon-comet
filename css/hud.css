@@ -46,7 +46,7 @@ body.hx-play #banner { display: none !important; } /* no centre banners during g
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0, rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.18) 100%); }
 #hud.hx .hx-bar.shd > i { background-color: var(--x-shd); }
 #hud.hx .hx-bar > span { position: absolute; right: calc(var(--hs) * 5); top: 0; bottom: 0; display: flex; align-items: center; z-index: 1;
-  font-size: calc(var(--hs) * 11); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--x-ink); text-shadow: var(--x-out); white-space: nowrap; }
+  font-size: calc(var(--hs) * 11); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: #f4f6fa; text-shadow: var(--x-out); white-space: nowrap; }
 #hud.hx .hx-bar.low { border-color: var(--x-hp); animation: hxLow 0.9s ease-in-out infinite; }
 #hud.hx .hx-bar.zero > span { color: var(--x-dim); }
 @keyframes hxLow { 50% { box-shadow: 0 0 calc(var(--hs) * 7) var(--x-hp); } }
@@ -61,7 +61,7 @@ body.hx-play #banner { display: none !important; } /* no centre banners during g
 #hud.hx .hx-combo { min-height: calc(var(--hs) * 13); font-size: calc(var(--hs) * 11); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--x-amber); text-shadow: var(--x-out); white-space: nowrap; }
 #hud.hx .hx-combo.pulse { animation: hxTick 0.3s ease-out; }
 @keyframes hxTick { 40% { transform: scale(1.25); } }
-#hud.hx .hx-c.dim { opacity: 0.6; }
+#hud.hx .hx-c.dim { opacity: 1; }
 #hud.hx .hx-c.dim .hx-combo, body.bossfight #hud.hx .hx-combo { visibility: hidden; }
 
 /* ---------------------------------------------------------------- top-right: crystals + pause, fps, alerts */
@@ -217,7 +217,7 @@ body.lefty #touchUI.hx .hx-tb.cons.c2 { right: auto; left: calc(var(--hs) * 14);
 #hud.hx .hx-sub .hx-lv b { font-size: calc(var(--hs) * 12); margin: 0; color: var(--x-xp); }
 #hud.hx .hx-sub .hx-sec { font-size: inherit; padding: 0; overflow: hidden; text-overflow: ellipsis; }
 #hud.hx .hx-c { padding-top: calc(var(--hs) * 2); }
-#hud.hx .hx-score { font-size: calc(var(--hs) * 20); }
+#hud.hx .hx-score { font-size: calc(var(--hs) * 20); color: #ffffff; opacity: 1; filter: none; text-shadow: 0 0 calc(var(--hs) * 3) rgba(0,0,0,0.9), 0 1px 0 #000, 0 -1px 0 #000, 1px 0 0 #000, -1px 0 0 #000; }
 #hud.hx .hx-combo { font-size: calc(var(--hs) * 10); }
 #hud.hx .hx-r { align-items: flex-end; justify-self: end; }
 #hud.hx .hx-rt { height: calc(var(--hs) * 32); }

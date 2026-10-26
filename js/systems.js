@@ -27,11 +27,28 @@
     const r = NC.store.load();
     S = r.save; NC.save = S; sys.source = r.source;
     sys.offlineRewards();            // accrue time away before the first write updates lastSeen
+    ensureGearEq();
     ensureMissions();
     NC.store.write(S, true);          // fresh backup of a known-good state
     try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
     return S;
   };
+  // 4.0 fix: after migration gear.eq may be empty / point at removed items -> equip the first owned variant per slot
+  function ensureGearEq() {
+    try {
+      const g = S && S.gear; if (!g || !Array.isArray(g.items)) return;
+      g.eq = g.eq || {};
+      for (const sl of D().GEAR_SLOTS) {
+        const slot = sl.id || sl, cur = g.eq[slot];
+        if (cur && g.items.some(i => i.id === cur && i.slot === slot)) continue;
+        if (!cur && g.eqFix40) continue;   // user unequipped on purpose after the one-time fix
+        const it = g.items.find(i => i.slot === slot && i.v);
+        g.eq[slot] = it ? it.id : null;
+      }
+      g.eqFix40 = 1;
+    } catch (e) { console.warn('ensureGearEq', e); }
+  }
+  sys.ensureGearEq = ensureGearEq;
   sys.save = () => { if (S) NC.store.write(S); return !!S; };
   sys.state = () => S;
   sys.withSave = (s, fn) => { const prev = S, pp = sys.noPersist; S = s; sys.noPersist = true; try { return fn(); } finally { S = prev; sys.noPersist = pp; } };
@@ -39,7 +56,7 @@
   sys.exportSave = () => NC.store.exportCode(S);
   sys.importSave = (code) => {
     const r = NC.store.importCode(code); if (!r.ok) return r;
-    S = r.save; NC.save = S; ensureMissions(); NC.store.write(S, true); return ok({ report: r.report });
+    S = r.save; NC.save = S; ensureGearEq(); ensureMissions(); NC.store.write(S, true); return ok({ report: r.report });
   };
   sys.resetSave = () => { S = NC.store.reset(S); NC.save = S; ensureMissions(); NC.store.write(S, true); return ok(); };
 

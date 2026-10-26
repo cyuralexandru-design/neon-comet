@@ -150,3 +150,6 @@
 .ha-sumg { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 6px 0; }
 .ha-orec { display: flex; flex-direction: column; align-items: center; font-size: 11px; } .ha-orec .ha-t { width: 100%; aspect-ratio: 1; } .ha-orec .ha-i { width: 36px; height: 36px; }
 .ha-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+/* 4.0 fix: upgrade cost "need X" + "have Y" under it */
+.ha-b .ha-have { display: block; font-size: 9px; font-weight: 600; opacity: .8; line-height: 1; margin-top: 1px; }
+.ha-b .ha-have.poor { color: #7a1f14; opacity: 1; }

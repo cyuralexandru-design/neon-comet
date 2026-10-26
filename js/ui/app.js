@@ -402,6 +402,14 @@
     let w = innerWidth || document.documentElement.clientWidth || 0, h = innerHeight || document.documentElement.clientHeight || 0;
     if (vv && vv.height > h && vv.height - h < 160) h = vv.height;
     if (vv && vv.width > w && vv.width - w < 160) w = vv.width;
+    try { // iOS: innerHeight / 100dvh can stop short of the home-indicator area (black strip). Probe 100lvh and use it on phones.
+      if (!isLand() && coarse()) {
+        let pr = UI._vhProbe;
+        if (!pr) { pr = UI._vhProbe = document.createElement('div'); pr.style.cssText = 'position:fixed;left:0;top:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none'; document.documentElement.appendChild(pr); }
+        const lh = pr.getBoundingClientRect().height;
+        if (lh > h && lh - h <= h * 0.15) h = lh;
+      }
+    } catch (e) {}
     try { // installed app, portrait: the window is the whole screen; some browsers report a stale smaller height at launch
       const fs = !!document.fullscreenElement || matchMedia('(display-mode: fullscreen)').matches;
       const iosApp = navigator.standalone === true && /iPhone|iPod/.test(navigator.userAgent);
@@ -586,7 +594,7 @@
         if ((m.turrets && m.turrets.length) || (m.comps && m.comps.length)) parts.push(t('mig.drones', { n: (m.turrets || []).length + (m.comps || []).length }));
         const refund = (m.refund || 0) + (m.gearRefund || 0);
         if (refund) parts.push(t('mig.refund', { n: UI.fmt(refund) }));
-        UI.toast(t('toast.update3') + (parts.length ? ': ' + parts.join(', ') : ''), 'warm', 7000);
+        if (parts.length) console.info('migration', parts.join(', ')); // 4.0: no more 'Actualizare 3.0' toast
       } next(); });
     queue.push(next => UI.whatsNew(next));
     queue.push(next => UI.offlinePopup ? UI.offlinePopup(next) : next());

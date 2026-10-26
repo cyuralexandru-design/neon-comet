@@ -213,3 +213,30 @@ body.lefty #stAb .st-ab.s2 { left: calc(max(calc(var(--hs) * 16), env(safe-area-
 .sd-manga { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #05070b; cursor: pointer; }
 .sd-mimg { width: 100%; height: 100%; max-width: 480px; object-fit: contain; animation: sd-in .3s ease-out; }
 .sd-manga .sd-h { position: absolute; bottom: max(10px, env(safe-area-inset-bottom, 0px)); left: 0; right: 0; text-align: center; }
+/* ---- 4.0 fix pass (iPhone) ---- */
+/* team picker: one crew per row (portrait | name + level | ability name + passive), START always visible */
+.st-tp { flex: 0 0 auto; }
+.st-tg { grid-template-columns: 1fr !important; overflow: visible; flex: 0 0 auto; gap: 6px; }
+.st-tc { align-items: center; padding: 6px 10px 6px 6px; min-height: 64px; }
+.st-tc .st-port.md { flex: 0 0 56px; width: 56px; height: 56px; }
+.st-tci { flex: 1 1 auto; gap: 2px; }
+.st-tci b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 22px; }
+.st-tci small { font-size: 12px; white-space: normal; }
+.st-tab { font-size: 12px; } .st-tab img { width: 18px; height: 18px; flex: none; }
+.st-tab em { white-space: normal; overflow: visible; }
+.st-tpa { font-size: 12px; line-height: 1.25; }
+.st-tc.lock { min-height: 48px; }
+.st-tc.lock .st-port.md { flex-basis: 40px; width: 40px; height: 40px; }
+.st-tn { right: 6px; top: 6px; min-width: 20px; font-size: 12px; }
+.st-ta { position: sticky; bottom: 0; z-index: 2; padding: 8px 0 max(8px, env(safe-area-inset-bottom, 0px)); background: linear-gradient(transparent, var(--panel) 30%); }
+.st-ta .btn { width: 100%; min-height: 48px; justify-content: center; }
+/* dialog: box always fully on screen, text readable */
+.sd-modal { align-items: stretch; overflow: hidden; }
+.sd-wrap { box-sizing: border-box; height: 100%; max-height: 100%; padding: 12px 12px max(16px, env(safe-area-inset-bottom, 0px)); overflow: hidden; }
+.sd-panel { flex: 1 1 0; min-height: 0; overflow: hidden; }
+.sd-box { flex: 0 0 auto; max-height: 52%; align-items: center; min-height: 140px; box-sizing: border-box; }
+.sd-box.hdbox { padding: 18px 18px 16px 12px; }
+.sd-p.sd-bust { flex: 0 0 104px; width: 104px; height: 132px; margin-top: 0; align-self: flex-end; }
+.sd-tx { align-self: stretch; justify-content: center; min-height: 0; overflow-y: auto; padding: 4px 4px 0 0; }
+.sd-tx p { font-size: 15px; line-height: 1.4; color: var(--ink); margin: 0; }
+.sd-tx .sd-h { margin-top: 4px; }

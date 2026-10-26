@@ -180,7 +180,10 @@
     for (const b of [R.mboss, R.boss]) {
       if (!b) continue;
       let id = b.spr;
-      if (b.big) { if (b.hp / b.max < 0.5 && A.has(b.spr + '_dmg')) id = b.spr + '_dmg'; else if (A.has(b.spr + '_anim')) id = b.spr + '_anim'; }
+      // HD art first: pixel _dmg/_anim variants only when the boss has no HD painting (4.0 bug K)
+      const hdB = A.hdMan && (A.hdMan[b.spr] || A.hdCache[b.spr]);
+      if (b.big && !hdB) { if (b.hp / b.max < 0.5 && A.has(b.spr + '_dmg')) id = b.spr + '_dmg'; else if (A.has(b.spr + '_anim')) id = b.spr + '_anim'; }
+      if (hdB && !A.hdCache[b.spr]) A.get(b.spr);
       if (b.atk && b.atk.name === 'ram' && b.atk.tel) P.dashed(g, b.x, b.y, b.atk.tx, b.atk.ty, b.def.col, 4, 3);
       A.draw(g, id, b.x, b.y, A.frameAt(id, b.t), { alpha: b.alpha, white: b.flash > 0 && Math.floor(b.t * 20) % 4 === 0 });
       if (b.inv > 0 && Math.floor(t * 10) % 2) P.circle(g, b.x, b.y, b.r + 4, '#ffffff');

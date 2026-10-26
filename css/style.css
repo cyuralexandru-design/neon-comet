@@ -110,7 +110,8 @@
   .title-x { font-weight: 800; font-size: var(--fs-xl); letter-spacing: 0.2em; text-transform: uppercase; }
 
   /* ---------------------------------------------------------------- stage */
-  html, body { background-color: #05070b; }
+  html, body { background-color: #05070b; min-height: 100%; }
+  body:not(.col) { background-color: var(--bg); }
   body.col { background: radial-gradient(ellipse at 50% 40%, #0d121b 0, #05070b 70%) #05070b; }
   #stage { position: fixed; left: 0; top: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; contain: layout paint;
     background-color: var(--bg); background-image: var(--space), var(--stars); background-size: 100% 100%, 100% 100%, var(--starsz); }
@@ -349,7 +350,10 @@
   .modal .acts { display: flex; gap: calc(var(--p) * 8); justify-content: flex-end; margin-top: calc(var(--p) * 10); flex-wrap: wrap; }
 
   /* what's new */
-  .wn { width: calc(var(--p) * 460); }
+  .wn { width: min(calc(var(--p) * 460), calc(var(--stw, 100vw) - 24px)); box-sizing: border-box; padding: calc(var(--p) * 30) calc(var(--p) * 28) calc(var(--p) * 26) !important; overflow-x: hidden; }
+  .modal > .pnl.wn > .pnl-h { margin: 0 0 calc(var(--p) * 10); padding: 0; flex-wrap: wrap; }
+  .wn .pnl-h .t { white-space: normal; overflow-wrap: anywhere; }
+  .wn li { overflow-wrap: anywhere; min-width: 0; }
   .wn .pnl-h .t { color: var(--amber); }
   .wn ul { list-style: none; display: flex; flex-direction: column; gap: calc(var(--p) * 5); }
   .wn li { position: relative; padding-left: calc(var(--p) * 16); font-size: var(--fs-m); line-height: 1.35; color: var(--ink2); }

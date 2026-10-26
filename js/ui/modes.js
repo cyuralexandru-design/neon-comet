@@ -81,6 +81,14 @@
   .md-lbl small{font-weight:600;font-size:12px;letter-spacing:0;text-transform:none;color:var(--dim)}
   .md-card:hover,.md-card:focus,.md-card.foc,.md-card.pad-focus{transform:scale(1.02);border-color:var(--amber)}
   .md-r0{border-color:var(--r0)}.md-r1{border-color:var(--r1)}.md-r3{border-color:var(--r3)}.md-r4{border-color:var(--r4)}
-  .md-lock .md-img{filter:grayscale(.6) brightness(.6)}`;
+  .md-lock .md-img{filter:grayscale(.6) brightness(.6)}
+  /* 4.0 fix: the HD art has a dark title band at its vertical centre -> label sits inside it; cards fill the screen */
+  .md-2 .md-card,.md-4 .md-card{max-height:none;justify-content:center;padding:0}
+  .md-card:has(.md-img.hd)::after{background:none}
+  .md-card .md-img.hd~.md-lbl{position:absolute;left:12%;right:12%;top:50%;transform:translateY(-50%);gap:2px;line-height:1.05}
+  .md-card .md-img.hd~.md-lbl small{color:var(--ink);opacity:.75;font-size:clamp(10px,2.9vw,12px)}
+  .md-4 .md-img.hd~.md-lbl{left:8%;right:8%}
+  .md-4 .md-img.hd~.md-lbl small{font-size:clamp(9px,2.5vw,11px)}
+  .modes .md-row.md-4{gap:10px}`;
   document.head.appendChild(css);
 })(window.NC = window.NC || {});

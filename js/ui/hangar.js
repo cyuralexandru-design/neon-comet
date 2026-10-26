@@ -78,6 +78,8 @@
     if (c && typeof c === 'object') return { ore: c.ore | 0, cr: c.cr || c.crystals || 0 };
     return { ore: null, cr: null };
   }
+  // upgrade cost: "need 7 (have 75)" instead of the confusing 75/7
+  const costHtml = (cat, c) => `<em>${oreIco(cat)}${c.ore == null ? '?' : fmt(c.ore)}${c.cr ? ` ${gem()}${fmt(c.cr)}` : ''}</em><small class="ha-have${oreN(cat) < (c.ore || 0) ? ' poor' : ''}">${t('hangar.have', { n: fmt(oreN(cat)) })}</small>`;
   const canUpCat = cat => { const c = catCost(cat); return !!c && c.ore != null && oreN(cat) >= c.ore && cry() >= (c.cr || 0); };
 
   // items of a category: [{cat, id, def, var, owned, eq, sprite}]
@@ -93,6 +95,7 @@
     return l && l.length ? l.map(x => x.id) : VAR_FALLBACK[cat];
   }
   function gearOwned(cat, id) {
+    if (has('ownsVariant')) return !!call('ownsVariant', cat, id);
     if (has('ownedVariant')) return !!call('ownedVariant', cat, id);
     if (has('variantOwned')) return !!call('variantOwned', cat, id);
     const S = St(), g = S.gear || {};
@@ -106,7 +109,10 @@
     const g = St().gear || {};
     if (g.eqv && g.eqv[cat]) return g.eqv[cat];
     const e = g.eq && g.eq[cat];
-    return e && gearIds(cat).includes(e) ? e : null;
+    if (!e) return null;
+    if (gearIds(cat).includes(e)) return e;
+    const it = (g.items || []).find(i => i.id === e);   // 4.0: eq holds the item uid -> its variant
+    return it && it.v ? it.v : null;
   }
   const eqOf = cat => CATS[cat].gear ? gearEq(cat) : ((St()[CATS[cat].bucket] || {}).eq || null);
   function spriteIds(cat, id, vd) {
@@ -229,7 +235,7 @@
     const lvl = catLevel(cat), tr = catTier(cat), ts = tierSpan(lvl), c = catCost(cat), have = oreN(cat);
     const nx = ts.next ? t('hangar.tierNextAt', { r: rname(tr + 1), n: ts.next }) : t('hangar.tierTop');
     const up = !c ? `<span class="ha-maxed">${t('hangar.dt.max')}</span>`
-      : `<button class="ha-b up${canUpCat(cat) ? '' : ' poor'}" data-f data-a="catUp" data-id="${cat}" data-k="cu-${cat}"><span>${t('hangar.upCat')}</span><em>${oreIco(cat)}${fmt(have)}/${c.ore == null ? '?' : fmt(c.ore)}${c.cr ? ` ${gem()}${fmt(c.cr)}` : ''}</em></button>`;
+      : `<button class="ha-b up${canUpCat(cat) ? '' : ' poor'}" data-f data-a="catUp" data-id="${cat}" data-k="cu-${cat}"><span>${t('hangar.upCat')}</span>${costHtml(cat, c)}</button>`;
     return `<div class="ha-cbar r${tr}">
       <div class="ha-cbi"><b data-fit="9">${t('hangar.slot.' + cat)}</b><span class="hac${tr}">${t('hangar.lvlOf', { n: lvl, m: MAXL })} · ${rname(tr)}</span>
         <i class="ha-bar t${tr}"><i style="width:${(ts.p * 100).toFixed(1)}%"></i></i><small data-fit="7">${esc(nx)}</small></div>${up}</div>`;
@@ -396,8 +402,8 @@
   function mainStat(cat, id, d, owned) {
     const c = CATS[cat];
     if (c.gear) {
-      let ms = call('variantStats', cat, id);
-      if (ms && typeof ms === 'object') { const k = Object.keys(ms)[0]; if (k) return { k, l: t('hangar.st.' + k), v: fmtStat(k, ms[k]) }; }
+      const is = has('itemStats') ? call('itemStats', { slot: cat, v: id }) : null;
+      if (is && is.main) return { k: is.main.stat, l: t('hangar.st.' + is.main.stat), v: is.main.txt || fmtStat(is.main.stat, is.main.v) };
       const m = d && (d.main || d.stat);
       if (m && typeof m === 'object') return { k: m.stat, l: t('hangar.st.' + m.stat), v: fmtStat(m.stat, m.v != null ? m.v : m.value) };
       return null;
@@ -422,13 +428,16 @@
   }
   function bonusText(b) {
     const v = b.v != null ? b.v : b.value;
-    const vs = typeof v === 'number' ? (Math.abs(v) < 1 ? Math.round(v * 1000) / 10 : Math.round(v * 10) / 10) : v;
+    let vs = b.txt;
+    if (!vs && typeof v === 'number') { try { vs = D().statTxt(b.stat, v, b.stat === 'magnet'); } catch (e) { vs = (v >= 0 ? '+' : '') + Math.round(v * 1000) / 10 + '%'; } }
     if (b.textKey && NC.hasT && NC.hasT(b.textKey)) return t(b.textKey, { v: vs, n: vs });
-    if (b.textKey && !NC.hasT) return t(b.textKey, { v: vs, n: vs });
-    return '+' + vs + (Math.abs(v) < 1 ? '%' : '') + ' ' + t('hangar.st.' + b.stat);
+    const lb = t('hangar.st.' + b.stat);
+    if (/[-−]\s*$/.test(lb) && typeof vs === 'string') return lb.replace(/\s*[-−]\s*$/, '') + ' -' + vs.replace(/^[+-]/, '');   // "Damage taken -5%"
+    return lb + ' ' + vs;
   }
   function bonusHtml(vd, tr, lvl) {
-    const bl = (vd && Array.isArray(vd.bonus) ? vd.bonus : []).slice(0, 5);
+    let bl = (vd && Array.isArray(vd.bonus) ? vd.bonus : []).slice(0, 5);
+    if (vd && vd.slot && has('itemStats')) { const is = call('itemStats', { slot: vd.slot, v: vd.id }); if (is && is.lines) bl = is.lines.slice(0, 5); }
     if (!bl.length) return '';
     let hintDone = false;
     return `<div class="ha-bl">${bl.map((b, i) => {
@@ -465,7 +474,7 @@
     else if (eq) acts.push(c.opt || c.gear ? btn('unequip', t('hangar.dt.unequip'), 'eqb') : `<span class="ha-b off eqb">${t('hangar.dt.equipped')}</span>`);
     else acts.push(btn('equip', t('hangar.dt.equip'), 'eqb', 'data-first'));
     acts.push(!cost ? `<span class="ha-b off upb">${t('hangar.dt.max')}</span>`
-      : btn('up', `<span>${t('hangar.upCat')}</span><em>${oreIco(cat)}${fmt(oreN(cat))}/${cost.ore == null ? '?' : fmt(cost.ore)}${cost.cr ? ` ${gem()}${fmt(cost.cr)}` : ''}</em>${canUpCat(cat) ? '<i class="ha-up"></i>' : ''}`, 'upb' + (canUpCat(cat) ? '' : ' poor')));
+      : btn('up', `<span>${t('hangar.upCat')}</span>${costHtml(cat, cost)}${canUpCat(cat) ? '<i class="ha-up"></i>' : ''}`, 'upb' + (canUpCat(cat) ? '' : ' poor')));
     acts.push(btn('lock', `<i class="ha-padl${locked ? ' on' : ''}"></i>`, 'lkb' + (locked ? ' on' : ''), `aria-label="${esc(t(locked ? 'hangar.unlock' : 'hangar.lock'))}"`));
     return `<div class="ha-ph r${tr}"><small>${rname(tr)} · ${t('hangar.slot.' + cat)}</small><b data-fit="12">${esc(nameOf(cat, id, d))}</b></div>
       <div class="ha-pb">
@@ -506,7 +515,7 @@
     }
     if (c.gear) {
       if (a === 'equip') r = has('equipVariant') ? call('equipVariant', cat, id) : { ok: false, err: 'hangar.soon' };
-      if (a === 'unequip') r = has('equipVariant') ? call('equipVariant', cat, null) : call('unequipGear', cat);
+      if (a === 'unequip') r = call('unequipGear', cat);
     } else {
       if (a === 'equip') r = call('equip', c.kind, id);
       if (a === 'unequip') r = call('equip', c.kind, null);

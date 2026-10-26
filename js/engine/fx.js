@@ -90,7 +90,15 @@
   F.ring = (x, y, col, max, life = 0.4) => { if (F.headless) return; F.rings.push({ x, y, col, r: 2, max, life, ml: life }); };
   F.anim = (id, x, y, fps, opts) => { if (F.headless) return; const s = NC.assets.get(id); F.anims.push(Object.assign({ id, x, y, t: 0, fps: fps || s.fps || 16, frames: s.frames }, s.hd && s.frames === 1 ? { loop: 0.32, hd1: true } : null, opts)); }; // HD single image: 0.32 s grow + fade
   F.pop = (x, y, txt, col, life = 0.7) => { if (F.headless) return; if (F.pops.length > 40) F.pops.shift(); F.pops.push({ x, y, txt, col, life, ml: life, vy: -22 }); };
-  F.dmg = (x, y, v, crit) => { if (F.headless || !U.settings().dmgNum) return; F.pop(x + U.rnd(-4, 4), y - 4, U.fmt(v), crit ? F.COL.amber : F.COL.ink, crit ? 0.7 : 0.5); };
+  // 4.0: damage numbers merge per target (one number that grows), capped, drawn in the UI font (not pixel)
+  F.dmg = (x, y, v, crit, t) => {
+    if (F.headless || !U.settings().dmgNum) return;
+    if (t) { for (let i = F.pops.length - 1; i >= 0; i--) { const p = F.pops[i]; if (p.tg === t && p.ml - p.life < 0.35) { p.v += v; p.txt = U.fmt(Math.round(p.v)); if (crit) { p.col = F.COL.amber; p.crit = true; } p.life = p.ml; p.x = x; return; } } }
+    let n = 0; for (const p of F.pops) if (p.v != null) n++;
+    if (n >= 10) { const i = F.pops.findIndex(p => p.v != null); if (i >= 0) F.pops.splice(i, 1); }
+    F.pop(x + U.rnd(-3, 3), y - 4, U.fmt(Math.round(v)), crit ? F.COL.amber : F.COL.ink, crit ? 0.75 : 0.55);
+    const p = F.pops[F.pops.length - 1]; p.v = v; p.tg = t || null; p.crit = !!crit;
+  };
   F.glow = (x, y, r, col, life = 0.3) => { if (F.headless || F.glows.length > 40) return; F.glows.push({ x, y, r, col, life, ml: life }); };
   F.bolt = (x1, y1, x2, y2, col, life = 0.12) => { if (F.headless) return; F.bolts.push({ x1, y1, x2, y2, col, life, seed: Math.random() * 1000 }); };
   F.doShake = (v) => { if (U.settings().shake !== false) F.shake = Math.max(F.shake, v); };
@@ -128,7 +136,7 @@
     }
     for (const q of F.glows) { const k = q.life / q.ml; F.drawGlow(g, q.x, q.y, q.r * (1.25 - 0.25 * k), q.col, k * 0.9); }
     for (const a of F.anims) if (a.t >= 0) { if (a.hd1) { const k = a.t / a.loop; NC.assets.draw(g, a.id, a.x, a.y, 0, { alpha: (a.alpha == null ? 1 : a.alpha) * (1 - k * k), scale: 0.7 + 0.5 * k }); } else NC.assets.draw(g, a.id, a.x, a.y, Math.floor(a.t * a.fps), { alpha: a.alpha }); }
-    for (const q of F.parts) { g.globalAlpha = q.life / q.ml > 0.5 ? 1 : 0.6; g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
+    for (const q of F.parts) { const k = q.life / q.ml; g.globalAlpha = Math.min(1, 0.25 + k); g.fillStyle = q.col; g.beginPath(); g.arc(q.x, q.y, q.s * (0.35 + 0.35 * k), 0, 6.2832); g.fill(); } // soft round sparks (no pixel squares)
     g.globalAlpha = 1;
     for (const b of F.bolts) { // jagged lightning
       let px = b.x1, py = b.y1; const n = Math.max(2, Math.floor(Math.hypot(b.x2 - b.x1, b.y2 - b.y1) / 8));
@@ -138,7 +146,13 @@
         P.line(g, px, py, nx, ny, b.col); px = nx; py = ny;
       }
     }
-    for (const p of F.pops) { g.globalAlpha = Math.min(1, p.life / p.ml * 2); P.text(g, p.txt, p.x, p.y, p.col); }
+    for (const p of F.pops) {
+      g.globalAlpha = Math.min(1, p.life / p.ml * 2);
+      if (p.v != null) { // smooth font damage number with a dark outline
+        g.font = (p.crit ? '700 6.5px ' : '600 5px ') + 'NCUI, system-ui, -apple-system, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.lineWidth = 1.2; g.lineJoin = 'round'; g.strokeStyle = 'rgba(5,7,11,0.85)'; g.strokeText(p.txt, p.x, p.y); g.fillStyle = p.col; g.fillText(p.txt, p.x, p.y);
+      } else P.text(g, p.txt, p.x, p.y, p.col);
+    }
     g.globalAlpha = 1;
   };
 })(window.NC = window.NC || {});

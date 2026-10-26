@@ -121,6 +121,8 @@
     const base = (NC.assets && NC.assets.base) || 'assets/sprites/';
     const ld = src => { const i = new Image(); i.ok = false; i.onload = () => { i.ok = true; }; i.src = base + src; return i; };
     const ship = ld('ship_' + shipId + '.png'), logo = ld('ui_logo.png'), thr = ld('fx_thruster.png');
+    let hdShip = null; const tryHdShip = () => { if (hdShip) return; const u = (NC.assets && NC.assets.hd && NC.assets.hd('ship_' + shipId)) || hdu('ship_' + shipId); if (u) { hdShip = new Image(); hdShip.ok = false; hdShip.onload = () => { hdShip.ok = true; }; hdShip.src = u; } };
+    tryHdShip();
     const hdLogo = box.querySelector('.ov-ld-logo'); let hdOk = false;
     const tryHd = () => { const u = hdu('logo'); if (u && !hdLogo.src) { hdLogo.onload = () => { hdOk = true; hdLogo.hidden = false; }; hdLogo.src = u; } };
     tryHd();
@@ -165,7 +167,9 @@
       const fr = Math.floor(time * 12) % 3;
       if (thr.ok) { const tw = thr.width / 3; g.drawImage(thr, fr * tw, 0, tw, thr.height, -Math.round(tw / 2), 12, tw, thr.height); if (outro) g.drawImage(thr, fr * tw, 0, tw, thr.height, -Math.round(tw / 2), 12 + thr.height - 2, tw, thr.height); }
       else { const fl = [5, 7, 6][fr] + Math.round(outro * 14); g.fillStyle = C.amber; g.fillRect(-2, 12, 4, fl); g.fillStyle = C.hi; g.fillRect(-1, 12, 2, Math.max(2, fl - 2)); }
-      if (ship.ok) g.drawImage(ship, -16, -16); else { g.fillStyle = C.dim; g.fillRect(-6, -12, 12, 24); }
+      if (!hdShip) tryHdShip();
+      if (hdShip && hdShip.ok) { const ss = 30, ar = hdShip.naturalWidth / Math.max(1, hdShip.naturalHeight), sw = ar >= 1 ? ss : ss * ar, sh = ar >= 1 ? ss / ar : ss; g.imageSmoothingEnabled = true; g.drawImage(hdShip, -sw / 2, -sh / 2, sw, sh); g.imageSmoothingEnabled = false; }
+      else if (ship.ok && !(NC.assets && NC.assets.hd && NC.assets.hd('ship_' + shipId))) g.drawImage(ship, -16, -16); else { g.fillStyle = C.dim; g.fillRect(-6, -12, 12, 24); }
       g.restore();
       // DOM text under the bar (readable UI font instead of canvas pixels)
       const pos = (bx * K / DPR).toFixed(1) + '|' + ((by + 10) * K / DPR).toFixed(1) + '|' + (bw * K / DPR).toFixed(1);
@@ -193,7 +197,7 @@
     Promise.all([load.catch(e => console.error('assets.load', e)), fonts]).then(() => {
       try { if (NC.game && NC.game.init) NC.game.init($('c')); } catch (e) { console.error('game.init', e); }
       try { UI.layout && UI.layout(); } catch (e) {}
-      readPal(); tryHd(); loaded = true;
+      readPal(); tryHd(); tryHdShip(); loaded = true;
     });
     requestAnimationFrame(draw);
   });
@@ -223,9 +227,11 @@
     try { if (NC.game && typeof NC.game.runStats === 'function') s = NC.game.runStats(); } catch (e) { console.error('runStats', e); }
     const h = NC.hud || {}; s = s || {};
     const g = (k, d) => (s[k] != null ? s[k] : h[k] != null ? h[k] : d);
+    const mx = k => { const a = s[k], b = h[k]; return typeof a === 'number' && typeof b === 'number' ? Math.max(a, b) : g(k); };   // never show less than the HUD
+    const R0 = NC.game && NC.game.run; if (R0) { if (s.time == null && R0.time != null) s.time = Math.floor(R0.time); if (s.kills == null) s.kills = R0.kills; if (s.score == null) s.score = R0.score; }
     return { hp: g('hp'), maxHp: g('maxHp'), shd: g('shd'), maxShd: g('maxShd'), atk: g('atk'), dps: g('dps'), crit: g('crit'), critDmg: g('critDmg'),
-      vamp: g('vamp'), speed: g('speed'), runLvl: g('runLvl', 1), runXp: g('runXp', 0), runNeed: g('runNeed', 0), time: g('time'), kills: g('kills'),
-      score: g('score'), cards: Array.isArray(s.cards) ? s.cards : [] };
+      vamp: g('vamp'), speed: g('speed'), runLvl: g('runLvl', 1), runXp: g('runXp', 0), runNeed: g('runNeed', 0), time: g('time'), kills: mx('kills'),
+      score: mx('score'), cards: Array.isArray(s.cards) ? s.cards : [] };
   };
   const bad = v => v == null || typeof v !== 'number' || isNaN(v);
   const fNum = v => (bad(v) ? '-' : (Math.abs(v) >= 1e5 ? fmt(v) : num(Math.round(v))));
@@ -512,14 +518,20 @@
     };
   }
   const gearTile = (it, i, cap) => `<div class="ov-gt${cap ? ' cap' : ''}" style="animation-delay:${Math.min(i, 24) * 45}ms" data-f data-a="item" data-i="${i}" data-k="gt-${i}">
-      <div class="ov-gf">${UI.frame(clampR(it.r), img('gear_' + it.slot + '_' + clampR(it.r), 'ico24'), Object.assign({ lvl: it.lvl || 1 }, it.set ? { set: it.set } : {}))}</div>
+      <div class="ov-gf">${UI.frame(clampR(it.r), gearIco(it), it.set ? { set: it.set } : {})}</div>
+      <span class="ov-glv">${esc(t('ov.lv', { n: it.lvl || 1 }))}</span>
       ${cap ? `<span class="nm" style="color:var(--r${clampR(it.r)})">${tx(it.nameKey || 'slot.' + it.slot)}</span>` : ''}</div>`;
+  // 4.0: HD variant art gear_<slot>_<variant>, old rarity sprite only as fallback
+  const gearIco = it => hdi(it.v ? 'gear_' + it.slot + '_' + it.v : 'gear_' + it.slot + '_' + clampR(it.r), 'ov-gi', 'gear_' + it.slot + '_' + clampR(it.r));
+  const oreCat = k => String(k).replace(/^ore_/, '');
+  const oreTile = (k, n) => `<div class="ov-xt ore">${hdi('ore_' + oreCat(k), '', false) || img('ui_crystal', 'pix')}<b>+${fmt(n)}</b><span>${tx('hangar.ore.' + oreCat(k))}</span></div>`;
+  const oresRow = o => { const k = Object.keys(o || {}).filter(x => o[x] > 0); return k.length ? `<div class="ov-exg"><div class="ov-sh"><b>${tx('hangar.ores')}</b><i>· ${fmt(k.reduce((a, x) => a + o[x], 0))}</i></div><div class="ov-xrow">${k.map(x => oreTile(x, o[x])).join('')}</div></div>` : ''; };
   const crTile = n => `<div class="ov-xt cr">${img('ui_crystal', 'pix')}<b>+${fmt(n)}</b><span>${tx('ov.sum.crystals')}</span></div>`;
   const consTile = (k, n) => `<div class="ov-xt">${img('cons_' + k, 'pix')}<b>x${n}</b><span>${tx('cons.' + k + '.name')}</span></div>`;
   const itemPopup = it => {
     if (!it || typeof UI.infoCard !== 'function') return;
     const r = clampR(it.r);
-    try { UI.infoCard({ img: 'gear_' + it.slot + '_' + r, r, title: t(it.nameKey || 'slot.' + it.slot), sub: t('rarity.' + r) + ' · ' + t('slot.' + it.slot) + ' · ' + t('ov.lv', { n: it.lvl || 1 }) }); } catch (e) { console.error('infoCard', e); }
+    try { UI.infoCard({ img: it.v && hdu('gear_' + it.slot + '_' + it.v) ? 'gear_' + it.slot + '_' + it.v : 'gear_' + it.slot + '_' + r, r, title: t(it.nameKey || 'slot.' + it.slot), sub: t('rarity.' + r) + ' · ' + t('slot.' + it.slot) + ' · ' + t('ov.lv', { n: it.lvl || 1 }) }); } catch (e) { console.error('infoCard', e); }
   };
 
   UI.chestAnim = (r, res, onAgain) => {
@@ -539,7 +551,8 @@
       done = true;
       if (Math.max(r, ...items.map(i => i.r | 0)) >= 3) sfx('legendary');
       const rew = m.querySelector('.ov-rew'); rew.hidden = false;
-      rew.innerHTML = items.map((it, i) => gearTile(it, i, true)).join('') + (res.crystals ? crTile(res.crystals) : '') + Object.keys(res.cons || {}).map(k => consTile(k, res.cons[k])).join('');
+      rew.innerHTML = items.map((it, i) => gearTile(it, i, true)).join('') + (res.crystals ? crTile(res.crystals) : '') + Object.keys(res.cons || {}).map(k => consTile(k, res.cons[k])).join('')
+        + Object.keys(res.ores || {}).filter(k => res.ores[k] > 0).map(k => oreTile(k, res.ores[k])).join('');
       const acts = m.querySelector('.ov-chacts'); acts.hidden = false;
       acts.innerHTML = (onAgain ? `<button class="btn sec ov-cut" data-f data-a="again">${tx('ov.chest.again')}</button>` : '') + `<button class="btn pri ov-cut" data-f data-first data-a="close">${tx('ov.chest.ok')}</button>`;
       if (res.pity) UI.toast(t('ov.chest.pity'), 'warm');
@@ -553,8 +566,10 @@
     const res = (Array.isArray(list) ? list : [list]).filter(x => x && x.ok !== false);
     if (!res.length) return null;
     r = clampR(r != null ? r : res[0].rarity);
-    const items = [], cons = {}; let cr = 0, pity = false;
+    const items = [], cons = {}, ores = {}; let cr = 0, pity = false, dups = 0;
     for (const x of res) {
+      dups += (x.dups || []).length;
+      for (const k of Object.keys(x.ores || {})) ores[k] = (ores[k] || 0) + (x.ores[k] || 0);
       (x.items || []).forEach(it => items.push(it)); cr += x.crystals || 0; if (x.pity) pity = true;
       for (const k of Object.keys(x.cons || {})) cons[k] = (cons[k] || 0) + x.cons[k];
     }
@@ -574,7 +589,7 @@
       const ck = Object.keys(cons), cTot = ck.reduce((a, k) => a + cons[k], 0);
       return `<div class="ov-sum ov-pnl ov-cut pop-in" style="--rc:var(--r${r})">
         <div class="ov-sum-h"><span class="ov-sum-ic">${hdi('chest_' + r, '')}</span>
-          <div class="tt"><b>${tx('ov.sum.title', { n })}</b><small>${tx('chest.' + r + '.name')} · ${tx('ov.sum.items', { n: items.length })}</small></div><span class="sp"></span>
+          <div class="tt"><b>${tx('ov.sum.title', { n })}</b><small>${tx('chest.' + r + '.name')} · ${tx('ov.sum.items', { n: items.length + dups })}${dups ? ' · ' + tx('ov.sum.dups', { n: dups }) : ''}</small></div><span class="sp"></span>
           <span class="ov-rcs">${groups.map(([q, a]) => `<span class="ov-rc" style="--rc:var(--r${q})"><i></i>${a.length}</span>`).join('')}</span></div>
         <div class="ov-sum-b">
           ${pity ? `<div class="ov-note">${ico('lvl')}${tx('ov.chest.pity')}</div>` : ''}
@@ -582,6 +597,7 @@
             <div class="ov-ggrid">${a.map(it => gearTile(it, items.indexOf(it), false)).join('')}</div></div>`).join('')}
           <div class="ov-extra">
             ${cr ? `<div class="ov-exg"><div class="ov-sh"><b>${tx('ov.sum.crystals')}</b></div><div class="ov-xrow">${crTile(cr)}</div></div>` : ''}
+            ${oresRow(ores)}
             ${ck.length ? `<div class="ov-exg"><div class="ov-sh"><b>${tx('ov.sum.cons')}</b><i>· ${cTot}</i></div><div class="ov-xrow">${ck.map(k => consTile(k, cons[k])).join('')}</div></div>` : ''}
           </div>
         </div>
